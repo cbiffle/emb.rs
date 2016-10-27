@@ -2,8 +2,13 @@
 name = "emb1"
 version = "0.1.0"
 dependencies = [
+ "embrs 0.1.0",
  "rust-libcore 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "embrs"
+version = "0.1.0"
 
 [[package]]
 name = "rust-libcore"

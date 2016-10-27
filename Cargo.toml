@@ -5,6 +5,7 @@ authors = ["cbiffle <code@cliffle.com>"]
 
 [dependencies]
 rust-libcore = "*"
+embrs = { path = "embrs" }
 
 [profile.dev]
 panic = "abort"
