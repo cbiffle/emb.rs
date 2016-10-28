@@ -1,4 +1,6 @@
-#![feature(core_intrinsics, asm)]
+#![feature(asm)]
+#![feature(const_fn)]
+#![feature(core_intrinsics)]
 
 #![no_std]
 
