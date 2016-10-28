@@ -13,6 +13,7 @@ sudo apt-get install -y \
 curl https://sh.rustup.rs -sSf > /tmp/rustup.sh
 bash /tmp/rustup.sh -y
 . ~/.cargo/env
+cargo install xargo
 
 cd /vagrant
 rustup override add nightly
