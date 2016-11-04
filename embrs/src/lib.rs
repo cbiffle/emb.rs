@@ -5,3 +5,4 @@
 #![no_std]
 
 pub mod arm_m;
+pub mod stm32f4;
