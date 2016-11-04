@@ -1,4 +1,5 @@
 pub mod exc;
+pub mod nvic;
 pub mod reg;
 
 /// Sets the processor's `PRIMASK` register to `val`.
