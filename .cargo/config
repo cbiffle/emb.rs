@@ -1,10 +1,14 @@
 [build]
-target = "thumbv7em-none-eabi"
+target = "thumbv7em-none-eabihf"
 
-[target.thumbv7em-none-eabi]
+[target.thumbv7em-none-eabihf]
 linker = "arm-none-eabi-gcc"
 rustflags = [
+  "-C", "target-cpu=cortex-m4",
+
   "-C", "link-arg=-mcpu=cortex-m4",
+  "-C", "link-arg=-mfloat-abi=hard",
+  "-C", "link-arg=-mfpu=fpv4-sp-d16",
   "-C", "link-arg=-mthumb",
   "-C", "link-arg=-Tlayout.ld",
   "-C", "link-arg=-nostartfiles",
