@@ -4,6 +4,8 @@
 
 #![no_std]
 
+#![no_builtins]
+
 #![deny(
     unused_import_braces,
     trivial_numeric_casts,

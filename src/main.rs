@@ -6,7 +6,7 @@
 
 extern crate embrs;
 
-use embrs::arm_m::exc;
+use embrs::arm_m::{self, exc};
 
 /******************************************************************************/
 
@@ -41,6 +41,7 @@ extern {
 /// function is responsible for initializing any global data it might need!
 /// I've currently punted on this for simplicity.
 pub unsafe extern fn reset_handler() -> ! {
+    arm_m::startup::initialize_runtime();
     loop {}
 }
 

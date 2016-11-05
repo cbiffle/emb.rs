@@ -2,6 +2,9 @@ pub mod exc;
 pub mod nvic;
 pub mod reg;
 
+#[cfg(target_os = "none")]
+pub mod startup;
+
 /// Sets the processor's `PRIMASK` register to `val`.
 #[inline]
 pub fn set_primask(val: bool) {
