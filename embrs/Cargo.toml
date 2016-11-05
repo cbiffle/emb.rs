@@ -4,3 +4,4 @@ version = "0.1.0"
 authors = ["cbiffle <code@cliffle.com>"]
 
 [dependencies]
+bitflags = "0.7"

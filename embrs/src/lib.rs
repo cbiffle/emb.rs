@@ -13,5 +13,8 @@
     unused_results,
     )]
 
+#[macro_use]
+extern crate bitflags;
+
 pub mod arm_m;
 pub mod stm32f4;
