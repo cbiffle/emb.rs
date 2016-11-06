@@ -43,16 +43,10 @@ struct Registers {
     dckcfgr:       Reg<u32>,
 }
 
-extern {
-    #[link_name="embrs_stm32f4_rcc_RCC"]
-    static mut _RCC: Registers;
-}
-
+const RCC_ADDRESS : usize = 0x40023800_usize;
 
 /// RCC driver.
-pub struct Rcc {
-    reg: *mut Registers,
-}
+pub struct Rcc;
 
 /// Describes types that name peripherals in the RCC.  This is used to fake
 /// overloading on `ApbPeripheral` and `AhbPeripheral`.  It isn't designed to
@@ -69,9 +63,9 @@ pub trait PeripheralName {
 }
 
 impl Rcc {
-    fn reg(&self) -> &mut Registers {
+    fn reg(&self) -> &Registers {
         unsafe {
-            &mut *self.reg
+            &*(RCC_ADDRESS as *const Registers)
         }
     }
 
@@ -87,13 +81,6 @@ impl Rcc {
         p.enable_clock(self)
     }
 }
-
-/// This relies on the implementation of `AhbPeripheral` and `ApbPeripheral`.
-/// It cannot be broken by user types implementing `PeripheralName`, because
-/// we don't expose any potentially thread-unsafe APIs from this module.  The
-/// most a user can do is create new operations in terms of existing ones,
-/// which may not provide atomic semantics for *them* but does preserve `Sync`.
-unsafe impl Sync for Rcc {}
 
 /// Names the processor's AHB buses.  This can be seen as a bounded-range
 /// integer type if you squint.
@@ -136,9 +123,9 @@ impl PeripheralName for AhbPeripheral {
     fn enable_clock(self, rcc: &Rcc) {
         if let (bus, _, Some(ena)) = self.describe() {
             let reg = match bus {
-                AhbBus::Ahb1 => &mut rcc.reg().ahb1enr,
-                AhbBus::Ahb2 => &mut rcc.reg().ahb2enr,
-                AhbBus::Ahb3 => &mut rcc.reg().ahb3enr,
+                AhbBus::Ahb1 => &rcc.reg().ahb1enr,
+                AhbBus::Ahb2 => &rcc.reg().ahb2enr,
+                AhbBus::Ahb3 => &rcc.reg().ahb3enr,
             };
 
             reg.atomic_or(1 << ena)
@@ -184,8 +171,8 @@ impl PeripheralName for ApbPeripheral {
     fn enable_clock(self, rcc: &Rcc) {
         let (bus, idx) = self.describe();
         let reg = match bus {
-            ApbBus::Apb1 => &mut rcc.reg().apb1enr,
-            ApbBus::Apb2 => &mut rcc.reg().apb2enr,
+            ApbBus::Apb1 => &rcc.reg().apb1enr,
+            ApbBus::Apb2 => &rcc.reg().apb2enr,
         };
 
         reg.atomic_or(1 << idx)
@@ -193,6 +180,4 @@ impl PeripheralName for ApbPeripheral {
 }
 
 /// Shared instance of the `Rcc` driver.
-pub static RCC: Rcc = Rcc {
-    reg: unsafe { &_RCC as *const Registers as *mut Registers },
-};
+pub static RCC: Rcc = Rcc;

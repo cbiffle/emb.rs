@@ -4,7 +4,7 @@
 //! imagine as "GPIO," but also for routing peripheral functions to the outside
 //! world.
 
-#![allow(trivial_numeric_casts)]
+#![allow(trivial_numeric_casts)]  // required for bitflags :-(
 
 use arm_m::reg::{AtomicReg,Reg};
 
@@ -22,12 +22,6 @@ struct Registers {
     lckr:    Reg<u32>,
     afrl:    Reg<u32>,
     afrh:    Reg<u32>,
-}
-
-/// GPIO register names from the linker script.
-extern {
-    #[link_name="embrs_stm32f4_gpio_GPIOD"]
-    static mut _GPIOD: Registers;
 }
 
 /// Possible modes of a GPIO pin.
@@ -113,29 +107,31 @@ bitflags! {
 
 /// GPIO port driver.
 pub struct GpioPort {
-    reg: *mut Registers,
+    reg: *const Registers,
 }
+
+unsafe impl Sync for GpioPort {}
 
 impl GpioPort {
     /// Changes the mode of the pins selected by `pins` to `mode`.
     pub fn set_mode(&self, pins: PinMask, mode: Mode) {
-        Self::update_2(pins, mode as u32, unsafe { &mut self.reg().moder })
+        Self::update_2(pins, mode as u32, unsafe { &self.reg().moder })
     }
 
     /// Changes the output type of the pins selected by `pins` to `ot`.
     pub fn set_output_type(&self, pins: PinMask, ot: OutputType) {
-        Self::update_1(pins, ot as u32, unsafe { &mut self.reg().otyper })
+        Self::update_1(pins, ot as u32, unsafe { &self.reg().otyper })
     }
 
     /// Changes the output speed of the pins selected by `pins` to `speed`.
     pub fn set_speed(&self, pins: PinMask, speed: Speed) {
-        Self::update_2(pins, speed as u32, unsafe { &mut self.reg().ospeedr })
+        Self::update_2(pins, speed as u32, unsafe { &self.reg().ospeedr })
     }
 
     /// Changes the pull up/down configuration of the pins selected by `pins` to
     /// `pull`.
     pub fn set_pull(&self, pins: PinMask, pull: Pull) {
-        Self::update_2(pins, pull as u32, unsafe { &mut self.reg().pupdr })
+        Self::update_2(pins, pull as u32, unsafe { &self.reg().pupdr })
     }
 
     /// Selects an alternate function for the pins selected by `pins`.  For this
@@ -145,7 +141,7 @@ impl GpioPort {
         // This one's a bit hairier than the others, because the four-bit
         // select fields are split over two registers.  We process the two
         // individually using this helper.
-        fn do_update(bits: u32, af: u32, reg: &mut Reg<u32>) {
+        fn do_update(bits: u32, af: u32, reg: &Reg<u32>) {
             let (mask, setting) = {
                 // See update_2 below for an explanation of this method.
                 let mut places = 0u32;
@@ -163,9 +159,9 @@ impl GpioPort {
         let pins = pins.bits() as u32;
 
         do_update(pins & 0xFF, af,
-                  unsafe { &mut self.reg().afrl });
+                  unsafe { &self.reg().afrl });
         do_update((pins >> 8) & 0xFF, af,
-                  unsafe { &mut self.reg().afrh })
+                  unsafe { &self.reg().afrh })
     }
 
 
@@ -193,20 +189,20 @@ impl GpioPort {
     /// an arbitrary number of apparently unique references to a single object,
     /// so it's marked `unsafe` here.  So long as we're careful about how we
     /// access the `Registers` it can be used correctly.
-    unsafe fn reg(&self) -> &mut Registers {
-        &mut *self.reg
+    unsafe fn reg(&self) -> &Registers {
+        &*self.reg
     }
 
     /// Updates a word-packed array of 1-bit fields with `val`.  The elements
     /// that are updated are those included in `pins`; others are preserved.
-    fn update_1(pins: PinMask, val: u32, reg: &mut Reg<u32>) {
+    fn update_1(pins: PinMask, val: u32, reg: &Reg<u32>) {
         let mask = pins.bits() as u32;
         reg.atomic_nand_and_or(mask, mask * val)
     }
 
     /// Updates a word-packed array of 2-bit fields with `val`.  The elements
     /// that are updated are those included in `pins`; others are preserved.
-    fn update_2(pins: PinMask, val: u32, reg: &mut Reg<u32>) {
+    fn update_2(pins: PinMask, val: u32, reg: &Reg<u32>) {
         let (mask, setting) = {
             // This is admittedly a bit obscure, but generates the best code
             // of any implementation I've tried.  We exploit the fact that
@@ -227,13 +223,14 @@ impl GpioPort {
 
         reg.atomic_nand_and_or(mask, setting)
     }
-
 }
 
-/// We have carefully designed this type to be thread-safe...
-unsafe impl Sync for GpioPort {}
+macro_rules! static_gpio {
+    ($name:ident, $addr:expr) => {
+        pub static $name: GpioPort = GpioPort {
+            reg: $addr as *const Registers,
+        };
+    };
+}
 
-/// Static driver instance for GPIO port D.
-pub static GPIOD: GpioPort = GpioPort {
-    reg: unsafe { &_GPIOD as *const Registers as *mut Registers },
-};
+static_gpio!(GPIOD, 0x40020c00);

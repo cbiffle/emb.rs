@@ -8,6 +8,11 @@ use core::sync::atomic;
 use arm_m;
 use arm_m::reg::Reg;
 
+/// The NVIC register set layout.
+///
+/// TODO: this is technically undefined, I think.  Here's the rub.  While Rust
+/// happily lets us put `repr(C)` on `Registers` and `Reg`, it's being silently
+/// ignored because `UnsafeCell` isn't actually `repr(C)`.
 #[repr(C, packed)]
 struct Registers {
     /// The Interrupt Set Enabled Registers have one bit for each potential
@@ -44,19 +49,14 @@ struct Registers {
     ipr: [Reg<u8>; 496],
 }
 
-extern {
-    #[link_name="arm_m_nvic_NVIC"]
-    static mut _NVIC: Registers;
-}
+const NVIC_ADDRESS : usize = 0xe000e100_usize;
 
 /// Driver for the NVIC.
 ///
 /// Because operations on the NVIC affect interrupts, which are asynchronous
 /// events that can affect program order and make things difficult to reason
 /// about, the methods on `Nvic` are very carefully specified.
-pub struct Nvic {
-    reg: *mut Registers,
-}
+pub struct Nvic;
 
 impl Nvic {
     /// Ensures that an interrupt is enabled by the time this function returns.
@@ -147,8 +147,8 @@ impl Nvic {
         }
     }
 
-    unsafe fn reg(&self) -> &mut Registers {
-        &mut *self.reg
+    unsafe fn reg(&self) -> &'static Registers {
+        &*(NVIC_ADDRESS as *const Registers)
     }
 
     #[inline]
@@ -161,9 +161,5 @@ impl Nvic {
     }
 }
 
-unsafe impl Sync for Nvic {}
-
 /// Shared static instance of the `Nvic` driver.
-pub static NVIC: Nvic = Nvic {
-    reg: unsafe { &_NVIC as *const Registers as *mut Registers },
-};
+pub static NVIC: Nvic = Nvic;
