@@ -1,48 +1,26 @@
-Minimal Cortex-M (STM32F4) Rust Example
-=======================================
+emb.rs, Rust embedded support library
+=====================================
 
-This demonstrates how to write, build, and link a very minimal program for the
-STM32F4 microcontroller (a Cortex-M4 using the ARMv7E-M instruction set).
+This is an early draft of an embedded application support library for Rust,
+heavily derived from my C++ [ETL][1].  Because of limitations in the Rust tools
+for bare-metal and embedded work, this code only works on Nightly Rust as of
+this writing (November 2016).
 
-Note that this program is *very* minimal.  It doesn't blink an LED --- it simply
-enters an infinite loop.  This is not intended to show how to use the STM32F4's
-peripherals, but rather, how to start a bare-metal Rust project.
-
-This is all tested on Rust post-1.14 nightly (circa 2016-10-13).
-
-I've done my best to comment things like crazy.  Here's a rough tour of the
-project:
-
-- The Rust bits:
-  - `Cargo.toml` defines the build.  The main interesting bits are the
-    dependency on `rust-libcore` (avoiding the standard library) and the use of
-    `panic = "abort"` (avoiding the need for some unwinding code).
-  - `src/main.rs` is a self-contained program, including definitions for the
-    hardware vector table.
-  - I've included `Cargo.lock` to nail down the dependencies and help you
-    reproduce my results.
-  - The files in `notes` describe my journey while writing this example.
-
-- The build environment:
-  - `thumbv7em-none-eabi.json` is an LLVM target definition for the Cortex-M4,
-    lightly modified from the definition used by [Zinc](http://zinc.rs).  It's
-    very cool that we can just plug this in without modifying the toolchain.
-  - `.cargo/config` overrides the default linker to use the ARM one.
-  - `layout.ld` is a linker script that describes how to map the compiled
-    program into an STM32F4 binary image.
-  - Optionally, `Vagrantfile` and `vm-bootstrap.sh` describe how to spin up a
-    self-contained VM for building this project --- making it possible to try
-    this out without installing either Rust or an ARM toolchain.
+[1]: https://github.com/cbiffle/etl/
 
 ## Building with Vagrant
 
 This method will set up a self-contained environment, including Rust and an ARM
-toolchain, without modifying your system.  This approach should work on Mac and
-Windows in addition to Linux.
+toolchain, without modifying your system.  This should work on any operating
+system, including flashing an STM32F4DISCOVERY board from within the Vagrant
+environment.
 
 Install [Vagrant](https://www.vagrantup.com/).  I've tested on 1.8.4.
 
 Clone this repository.
+
+    $ git clone https://github.com/cbiffle/emb.rs.git
+    $ cd emb.rs
 
 Provision your build environment:
 
@@ -50,31 +28,42 @@ Provision your build environment:
 
 This may take a few minutes, since it needs to download toolchains and whatnot.
 
-Enter the environment and build:
+Enter the environment and build the example binary:
 
     $ vagrant ssh
-    $ cd /vagrant
-    $ cargo build
+    $ xargo build --release
 
-The ARM binary will be deposited in `target/thumbv7em-none-eabi/debug/emb1`.
+The ARM binary will be deposited in `target/thumbv7em-none-eabihf/debug/emb1`.
 
 ## Building with native Rust and ARM toolchain
 
 This approach has only been tested on Linux.
 
-Install Rust and a toolchain for `arm-none-eabi` (such as [the one packaged for
-Ubuntu](https://launchpad.net/gcc-arm-embedded)).
+You need to install the following:
 
-Clone this repository.
+- Rust, including Cargo.
+- [xargo][2].
+- A toolchain for `arm-none-eabi` (such as [the one packaged for Ubuntu][3]).
+
+Clone this repository:
+
+    $ git clone https://github.com/cbiffle/emb.rs.git
+    $ cd emb.rs
 
 Building this project requires the `nightly` toolchain, so (in the clone) run
 
     $ rustup override add nightly
 
+Note that Xargo requires the `rust-src` component.  If you have not needed it so
+far, you may need to add it to your environment using `rustup`:
+
+    $ rustup component add rust-src
+
 Now you can just run:
 
-    $ cargo build
+    $ xargo build --release
 
-The ARM binary will be deposited in `target/thumbv7em-none-eabi/debug/emb1`.
+The ARM binary will be deposited in `target/thumbv7em-none-eabihf/debug/emb1`.
 
-Release-mode builds work too; add `--release`.
+[2]: https://github.com/japaric/xargo
+[3]: https://launchpad.net/gcc-arm-embedded
