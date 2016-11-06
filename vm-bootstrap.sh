@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -ex
+
 sudo apt-get update
 sudo apt-get remove --purge landscape-common
 sudo apt-get install -y software-properties-common
