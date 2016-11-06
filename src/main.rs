@@ -7,7 +7,7 @@
 
 extern crate embrs;
 
-use embrs::arm_m::{self, exc};
+use embrs::arm_m::{self, exc, sys_tick};
 use embrs::stm32f4::rcc::{RCC, AhbPeripheral};
 use embrs::stm32f4::gpio::{self, GPIOD};
 
@@ -56,6 +56,13 @@ fn app() -> ! {
     GPIOD.set_mode(pins, gpio::Mode::Gpio);
     GPIOD.set_output_type(pins, gpio::OutputType::PushPull);
 
+    sys_tick::SYS_TICK.write_rvr(0xFFFFFF);
+
+    sys_tick::SYS_TICK.write_csr(
+        sys_tick::SYS_TICK.read_csr()
+        .with_enable(true)
+        .with_clksource(sys_tick::ClkSource::ProcessorClock));
+
     loop {
         GPIOD.set(pins);
         hackish_delay();
@@ -65,9 +72,7 @@ fn app() -> ! {
 }
 
 fn hackish_delay() {
-    for _ in 0 .. 1000000 {
-        unsafe { asm!("nop") }
-    }
+    while sys_tick::SYS_TICK.read_csr().get_countflag() == false {}
 }
 
 /// For predictability, I've mapped all architectural vectors to this routine.
