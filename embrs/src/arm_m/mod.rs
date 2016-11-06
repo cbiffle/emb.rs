@@ -24,3 +24,10 @@ pub fn instruction_synchronization_barrier() {
         asm!("isb" :::: "volatile")
     }
 }
+
+#[inline]
+pub fn wait_for_interrupt() {
+    unsafe {
+        asm!("wfi" :::: "volatile")
+    }
+}

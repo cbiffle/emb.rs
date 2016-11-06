@@ -61,18 +61,15 @@ fn app() -> ! {
     sys_tick::SYS_TICK.write_csr(
         sys_tick::SYS_TICK.read_csr()
         .with_enable(true)
+        .with_tickint(true)
         .with_clksource(sys_tick::ClkSource::ProcessorClock));
 
     loop {
         GPIOD.set(pins);
-        hackish_delay();
+        arm_m::wait_for_interrupt();
         GPIOD.clear(pins);
-        hackish_delay();
+        arm_m::wait_for_interrupt()
     }
-}
-
-fn hackish_delay() {
-    while sys_tick::SYS_TICK.read_csr().get_countflag() == false {}
 }
 
 /// For predictability, I've mapped all architectural vectors to this routine.
@@ -80,6 +77,8 @@ fn hackish_delay() {
 /// NMI and HardFault --- but if someone builds on this code, they might trigger
 /// something else.
 extern "C" fn trap() { loop {} }
+
+extern "C" fn just_return() {}
 
 /// The ROM vector table.  This is marked as the program entry point in the
 /// linker script, ensuring that any object reachable from this table is
@@ -105,7 +104,7 @@ pub static ISR_VECTORS : exc::ExceptionTable = exc::ExceptionTable {
     sv_call: Some(trap),
     debug_mon: Some(trap),
     pend_sv: Some(trap),
-    sys_tick: Some(trap),
+    sys_tick: Some(just_return),
 
     .. exc::empty_exception_table(unsafe { &__STACK_BASE },
                                   reset_handler)
