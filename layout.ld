@@ -110,3 +110,7 @@ __STACK_BASE = ORIGIN(ram_c) + LENGTH(ram_c);
 
 /* The start of the data initialization image in ROM, for the runtime. */
 _data_load = LOADADDR(.data);
+
+embrs_stm32f4_rcc_RCC = 0x40023800;
+
+embrs_stm32f4_gpio_GPIOD = 0x40020c00;

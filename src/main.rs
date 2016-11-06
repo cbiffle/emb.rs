@@ -1,3 +1,4 @@
+#![feature(asm)]
 #![feature(const_fn)]
 #![feature(lang_items)]
 
@@ -7,6 +8,8 @@
 extern crate embrs;
 
 use embrs::arm_m::{self, exc};
+use embrs::stm32f4::rcc::{RCC, AhbPeripheral};
+use embrs::stm32f4::gpio::{self, GPIOD};
 
 /******************************************************************************/
 
@@ -39,10 +42,32 @@ extern {
 /// This function will be "called" by the processor at reset.  Note that none of
 /// the C or Rust environment has been established --- in particular, this
 /// function is responsible for initializing any global data it might need!
-/// I've currently punted on this for simplicity.
 pub unsafe extern fn reset_handler() -> ! {
     arm_m::startup::initialize_runtime();
-    loop {}
+    app()
+}
+
+/// The application entry point.  We're no longer `unsafe`.
+fn app() -> ! {
+    RCC.enable_clock(AhbPeripheral::GpioD);
+
+    let pins = gpio::P12 | gpio::P13;
+
+    GPIOD.set_mode(pins, gpio::Mode::Gpio);
+    GPIOD.set_output_type(pins, gpio::OutputType::PushPull);
+
+    loop {
+        GPIOD.set(pins);
+        hackish_delay();
+        GPIOD.clear(pins);
+        hackish_delay();
+    }
+}
+
+fn hackish_delay() {
+    for _ in 0 .. 1000000 {
+        unsafe { asm!("nop") }
+    }
 }
 
 /// For predictability, I've mapped all architectural vectors to this routine.
