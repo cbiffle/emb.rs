@@ -6,9 +6,9 @@ heavily derived from my C++ [ETL][1].  Because of limitations in the Rust tools
 for bare-metal and embedded work, this code only works on Nightly Rust as of
 this writing (November 2016).
 
-[1]: https://github.com/cbiffle/etl/
+## Setting up a build environment
 
-## Building with Vagrant
+### Using Vagrant
 
 This method will set up a self-contained environment, including Rust and an ARM
 toolchain, without modifying your system.  This should work on any operating
@@ -28,14 +28,13 @@ Provision your build environment:
 
 This may take a few minutes, since it needs to download toolchains and whatnot.
 
-Enter the environment and build the example binary:
+To enter the environment:
 
     $ vagrant ssh
-    $ xargo build --release
 
-The ARM binary will be deposited in `target/thumbv7em-none-eabihf/debug/emb1`.
+Now proceed to the section on building and flashing.
 
-## Building with native Rust and ARM toolchain
+### Using native Rust and ARM toolchain
 
 This approach has only been tested on Linux.
 
@@ -59,11 +58,24 @@ far, you may need to add it to your environment using `rustup`:
 
     $ rustup component add rust-src
 
-Now you can just run:
+## Building and Flashing
+
+**Note:** if you're using Vagrant, remember to build and flash from *within*
+your Vagrant environment.
+
+To build:
 
     $ xargo build --release
 
-The ARM binary will be deposited in `target/thumbv7em-none-eabihf/debug/emb1`.
+The ARM binary will be deposited in `target/thumbv7em-none-eabihf/release/emb1`.
 
+To flash, attach an STM32F4DISCOVERY board via USB, and run:
+
+    $ ./flash.sh
+
+This script will use OpenOCD to flash the binary.
+
+
+[1]: https://github.com/cbiffle/etl/
 [2]: https://github.com/japaric/xargo
 [3]: https://launchpad.net/gcc-arm-embedded
