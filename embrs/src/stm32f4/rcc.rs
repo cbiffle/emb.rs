@@ -2,6 +2,9 @@
 
 use arm_m::reg::{AtomicReg, Reg};
 
+/// At startup, before the RCC has been reconfigured, the STM32F4 runs at 16MHz.
+pub const BOOT_CLOCK_HZ : u32 = 16_000_000;
+
 /// The RCC's hardware register layout.
 #[repr(C, packed)]
 struct Registers {

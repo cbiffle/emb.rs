@@ -8,7 +8,7 @@
 extern crate embrs;
 
 use embrs::arm_m::{self, exc, sys_tick};
-use embrs::stm32f4::rcc::{RCC, AhbPeripheral};
+use embrs::stm32f4::rcc::{RCC, AhbPeripheral, BOOT_CLOCK_HZ};
 use embrs::stm32f4::gpio::{self, GPIOD};
 
 /******************************************************************************/
@@ -47,6 +47,8 @@ pub unsafe extern fn reset_handler() -> ! {
     app()
 }
 
+const TOGGLE_HZ : u32 = 2;
+
 /// The application entry point.  We're no longer `unsafe`.
 fn app() -> ! {
     RCC.enable_clock(AhbPeripheral::GpioD);
@@ -56,7 +58,8 @@ fn app() -> ! {
     GPIOD.set_mode(pins, gpio::Mode::Gpio);
     GPIOD.set_output_type(pins, gpio::OutputType::PushPull);
 
-    sys_tick::SYS_TICK.write_rvr(0xFFFFFF);
+    let cycles_per_toggle = BOOT_CLOCK_HZ / TOGGLE_HZ;
+    sys_tick::SYS_TICK.write_rvr(cycles_per_toggle - 1);
 
     sys_tick::SYS_TICK.write_csr(
         sys_tick::SYS_TICK.read_csr()
