@@ -13,20 +13,6 @@ use embrs::stm32f4::gpio::{self, GPIOD};
 
 /******************************************************************************/
 
-// Items required by some part of core or the runtime.
-
-/// This will be invoked on `panic!`.  We don't currently panic, and there are
-/// some pieces missing to enable it (particularly `abort`), but the compiler
-/// looks for this when `no_std` is enabled so we have to provide it.
-#[lang = "panic_fmt"]
-pub extern fn panic_fmt(_msg: core::fmt::Arguments,
-                        _file: &'static str,
-                        _line: u32) -> ! {
-    loop {}
-}
-
-/******************************************************************************/
-
 // Application environment.
 
 extern {

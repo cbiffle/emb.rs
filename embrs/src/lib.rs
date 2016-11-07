@@ -1,6 +1,7 @@
 #![feature(asm)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
+#![feature(lang_items)]
 
 #![no_std]
 
@@ -19,4 +20,5 @@
 extern crate bitflags;
 
 pub mod arm_m;
+pub mod lang;
 pub mod stm32f4;

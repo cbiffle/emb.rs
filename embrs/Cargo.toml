@@ -5,3 +5,8 @@ authors = ["cbiffle <code@cliffle.com>"]
 
 [dependencies]
 bitflags = "0.7"
+
+[features]
+default = []
+
+app_panic_fmt = []
