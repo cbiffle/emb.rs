@@ -190,7 +190,7 @@ impl GpioPort {
     /// so it's marked `unsafe` here.  So long as we're careful about how we
     /// access the `Registers` it can be used correctly.
     #[inline]
-    unsafe fn reg(&self) -> &Registers {
+    unsafe fn reg(&self) -> &'static Registers {
         &*self.reg
     }
 
