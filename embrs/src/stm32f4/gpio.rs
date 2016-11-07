@@ -189,6 +189,7 @@ impl GpioPort {
     /// an arbitrary number of apparently unique references to a single object,
     /// so it's marked `unsafe` here.  So long as we're careful about how we
     /// access the `Registers` it can be used correctly.
+    #[inline]
     unsafe fn reg(&self) -> &Registers {
         &*self.reg
     }
