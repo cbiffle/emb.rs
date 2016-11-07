@@ -35,14 +35,16 @@ pub unsafe extern fn reset_handler() -> ! {
 
 const TOGGLE_HZ : u32 = 2;
 
+fn toggle_pins() -> gpio::PinMask {
+    gpio::P12 | gpio::P13
+}
+
 /// The application entry point.  We're no longer `unsafe`.
 fn app() -> ! {
     RCC.enable_clock(AhbPeripheral::GpioD);
 
-    let pins = gpio::P12 | gpio::P13;
-
-    GPIOD.set_mode(pins, gpio::Mode::Gpio);
-    GPIOD.set_output_type(pins, gpio::OutputType::PushPull);
+    GPIOD.set_mode(toggle_pins(), gpio::Mode::Gpio);
+    GPIOD.set_output_type(toggle_pins(), gpio::OutputType::PushPull);
 
     let cycles_per_toggle = BOOT_CLOCK_HZ / TOGGLE_HZ;
     sys_tick::SYS_TICK.write_rvr(cycles_per_toggle - 1);
@@ -54,10 +56,7 @@ fn app() -> ! {
         .with_clksource(sys_tick::ClkSource::ProcessorClock));
 
     loop {
-        GPIOD.set(pins);
         arm_m::wait_for_interrupt();
-        GPIOD.clear(pins);
-        arm_m::wait_for_interrupt()
     }
 }
 
@@ -67,7 +66,13 @@ fn app() -> ! {
 /// something else.
 extern "C" fn trap() { loop {} }
 
-extern "C" fn just_return() {}
+extern "C" fn toggle_isr() {
+    if GPIOD.get(toggle_pins()).is_empty() {
+        GPIOD.set(toggle_pins())
+    } else {
+        GPIOD.clear(toggle_pins())
+    }
+}
 
 /// The ROM vector table.  This is marked as the program entry point in the
 /// linker script, ensuring that any object reachable from this table is
@@ -93,7 +98,7 @@ pub static ISR_VECTORS : exc::ExceptionTable = exc::ExceptionTable {
     sv_call: Some(trap),
     debug_mon: Some(trap),
     pend_sv: Some(trap),
-    sys_tick: Some(just_return),
+    sys_tick: Some(toggle_isr),
 
     .. exc::empty_exception_table(unsafe { &__STACK_BASE },
                                   reset_handler)
