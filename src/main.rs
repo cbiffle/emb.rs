@@ -1,3 +1,5 @@
+//! An example program for the STM32F4DISCOVERY board.
+
 #![feature(asm)]
 #![feature(const_fn)]
 #![feature(lang_items)]
@@ -13,39 +15,28 @@ use embrs::stm32f4::gpio::{self, GPIOD};
 
 /******************************************************************************/
 
-// Application environment.
-
-extern {
-    /// This symbol is exported by the linker script, and defines the initial
-    /// stack pointer.
-    static __STACK_BASE: u32;
-}
-
-/******************************************************************************/
-
 // Application.
 
-/// This function will be "called" by the processor at reset.  Note that none of
-/// the C or Rust environment has been established --- in particular, this
-/// function is responsible for initializing any global data it might need!
-pub unsafe extern fn reset_handler() -> ! {
-    arm_m::startup::initialize_runtime();
-    app()
-}
-
-const TOGGLE_HZ : u32 = 2;
-
-fn toggle_pins() -> gpio::PinMask {
+/// The PinMask for the STM32F4DISCOVERY LEDs.
+fn led_pins() -> gpio::PinMask {
     gpio::P12 | gpio::P13
 }
 
-/// The application entry point.  We're no longer `unsafe`.
+/// Frequency of toggling (= half frequency of blinking).
+const TOGGLE_HZ : u32 = 2;
+
+/// The application entry point.  This name isn't special, it's called from
+/// `reset_handler` below.  Note that we're in safe code at this point.
 fn app() -> ! {
+    // Enable clock to GPIOD so we can mess with its registers.
     RCC.enable_clock(AhbPeripheral::GpioD);
 
-    GPIOD.set_mode(toggle_pins(), gpio::Mode::Gpio);
-    GPIOD.set_output_type(toggle_pins(), gpio::OutputType::PushPull);
+    // Configure our pins for push-pull digital output.
+    GPIOD.set_mode(led_pins(), gpio::Mode::Gpio);
+    GPIOD.set_output_type(led_pins(), gpio::OutputType::PushPull);
 
+    // Configure the SysTick timer to generate interrupts at our toggle
+    // frequency.
     let cycles_per_toggle = BOOT_CLOCK_HZ / TOGGLE_HZ;
     sys_tick::SYS_TICK.write_rvr(cycles_per_toggle - 1);
 
@@ -55,24 +46,22 @@ fn app() -> ! {
         .with_tickint(true)
         .with_clksource(sys_tick::ClkSource::ProcessorClock));
 
+    // Put the processor in an idle state waiting for interrupts from SysTick.
     loop {
         arm_m::wait_for_interrupt();
     }
 }
 
-/// For predictability, I've mapped all architectural vectors to this routine.
-/// Since we aren't enabling peripherals or faults, we can technically only take
-/// NMI and HardFault --- but if someone builds on this code, they might trigger
-/// something else.
-extern "C" fn trap() { loop {} }
-
+/// Interrupt handler that toggles our LEDs.
 extern "C" fn toggle_isr() {
-    if GPIOD.get(toggle_pins()).is_empty() {
-        GPIOD.set(toggle_pins())
+    if GPIOD.get(led_pins()).is_empty() {
+        GPIOD.set(led_pins())
     } else {
-        GPIOD.clear(toggle_pins())
+        GPIOD.clear(led_pins())
     }
 }
+
+extern "C" fn trap() { loop {} }
 
 /// The ROM vector table.  This is marked as the program entry point in the
 /// linker script, ensuring that any object reachable from this table is
@@ -103,3 +92,21 @@ pub static ISR_VECTORS : exc::ExceptionTable = exc::ExceptionTable {
     .. exc::empty_exception_table(unsafe { &__STACK_BASE },
                                   reset_handler)
 };
+
+/******************************************************************************/
+
+// Application environment.
+
+extern {
+    /// This symbol is exported by the linker script, and defines the initial
+    /// stack pointer.
+    static __STACK_BASE: u32;
+}
+
+/// This function will be "called" by the processor at reset.  Note that none of
+/// the C or Rust environment has been established --- in particular, this
+/// function is responsible for initializing any global data it might need!
+pub unsafe extern fn reset_handler() -> ! {
+    arm_m::startup::initialize_runtime();
+    app()
+}
