@@ -16,12 +16,27 @@ pub fn set_primask(val: bool) {
     }
 }
 
-/// Generates an instruction synchronization barrier (`ISB`) instruction.  For
-/// other types of barriers, see Rust's fence operations.
+/// Generates an instruction synchronization barrier (`ISB`) instruction.
 #[inline]
 pub fn instruction_synchronization_barrier() {
     unsafe {
         asm!("isb" :::: "volatile")
+    }
+}
+
+/// Generates a data synchronization barrier (`DSB`) instruction.
+#[inline]
+pub fn data_synchronization_barrier() {
+    unsafe {
+        asm!("dsb" :::: "volatile")
+    }
+}
+
+/// Generates a data memory barrier (`DMB`) instruction.
+#[inline]
+pub fn data_memory_barrier() {
+    unsafe {
+        asm!("dmb" :::: "volatile")
     }
 }
 

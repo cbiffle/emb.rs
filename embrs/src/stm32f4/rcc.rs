@@ -1,5 +1,6 @@
 //! Reset and Clock Control (RCC) support.
 
+use arm_m;
 use arm_m::reg::{AtomicReg, Reg};
 
 /// At startup, before the RCC has been reconfigured, the STM32F4 runs at 16MHz.
@@ -74,6 +75,9 @@ impl Rcc {
 
     /// Enables clock to peripheral `p` if that clock can be controlled.
     ///
+    /// The implementation uses barriers to ensure that the clock is enabled
+    /// before return.  This works around ST's erratum 2.1.13.
+    ///
     /// # Panics
     ///
     /// If `p`'s clock cannot be controlled.  Controllable clocks have a bit
@@ -81,7 +85,9 @@ impl Rcc {
     /// Reference Manual.
     pub fn enable_clock<P: PeripheralName>(&self, p: P) {
         // re-dispatch for bus-specific behavior
-        p.enable_clock(self)
+        p.enable_clock(self);
+        // ensure the write took effect.
+        arm_m::data_synchronization_barrier();
     }
 }
 
