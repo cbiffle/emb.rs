@@ -10,7 +10,7 @@
 extern crate embrs;
 
 use embrs::arm_m::{self, exc, sys_tick};
-use embrs::stm32f4::rcc::{RCC, AhbPeripheral, BOOT_CLOCK_HZ};
+use embrs::stm32f4::rcc::{self, RCC, AhbPeripheral};
 use embrs::stm32f4::gpio::{self, GPIOD};
 
 /******************************************************************************/
@@ -23,11 +23,27 @@ fn led_pins() -> gpio::PinMask {
 }
 
 /// Frequency of toggling (= half frequency of blinking).
-const TOGGLE_HZ : u32 = 2;
+const TOGGLE_HZ : u32 = 10;
 
 /// The application entry point.  This name isn't special, it's called from
 /// `reset_handler` below.  Note that we're in safe code at this point.
 fn app() -> ! {
+    RCC.configure_clocks(&rcc::ClockConfig {
+        crystal_hz: 8_000_000_f32,
+        crystal_divisor: 4,
+        vco_multiplier: 160,
+        general_divisor: 2,
+        pll48_divisor: 4,
+
+        ahb_divisor: None,
+        apb1_divisor: Some(rcc::ApbPrescaler::Div4),
+        apb2_divisor: Some(rcc::ApbPrescaler::Div2),
+
+        flash_latency: 5,
+    });
+
+    const HZ : u32 = 160_000_000;
+
     // Enable clock to GPIOD so we can mess with its registers.
     RCC.enable_clock(AhbPeripheral::GpioD);
 
@@ -37,7 +53,7 @@ fn app() -> ! {
 
     // Configure the SysTick timer to generate interrupts at our toggle
     // frequency.
-    let cycles_per_toggle = BOOT_CLOCK_HZ / TOGGLE_HZ;
+    let cycles_per_toggle = HZ / TOGGLE_HZ;
     sys_tick::SYS_TICK.write_rvr(cycles_per_toggle - 1);
 
     sys_tick::SYS_TICK.write_csr(
