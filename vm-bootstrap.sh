@@ -3,7 +3,6 @@
 set -ex
 
 sudo apt-get update
-sudo apt-get remove --purge landscape-common
 sudo apt-get install -y software-properties-common
 sudo add-apt-repository ppa:team-gcc-arm-embedded/ppa
 sudo apt-get update
