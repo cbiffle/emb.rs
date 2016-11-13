@@ -20,5 +20,6 @@
 extern crate bitflags;
 
 pub mod arm_m;
+pub mod bits;
 pub mod lang;
 pub mod stm32f4;
