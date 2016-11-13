@@ -11,6 +11,7 @@ use core;
 /// Error type indicating that some bits read from the hardware weren't valid
 /// for the expected type.  This usually indicates a driver bug, but can also
 /// indicate misbehaving hardware.
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct BadBits(pub u32);
 
 /// Result type for `BadBits`.
