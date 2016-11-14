@@ -346,8 +346,7 @@ pub struct ClockConfig {
     pub vco_multiplier: u32,
     /// Divisor used to derive the PLL general system clock output from the VCO
     /// frequency.  This maps to the `PLLP` field of `Pllcfgr`.
-    // TODO use Pllp enum
-    pub general_divisor: u32,
+    pub general_divisor: Pllp,
     /// Divisor used to derive the PLL48 output from the VCO frequency.  This
     /// maps to the `PLLQ` field of `Pllcfgr`.
     pub pll48_divisor: u32,
@@ -479,13 +478,7 @@ impl Rcc {
         // Configure the PLL.
         self.update_pllcfgr(|v| v.with_pllm(cfg.crystal_divisor)
                             .with_plln(cfg.vco_multiplier)
-                            .with_pllp(match cfg.general_divisor {
-                                2 => Pllp::Div2,
-                                4 => Pllp::Div4,
-                                6 => Pllp::Div6,
-                                8 => Pllp::Div8,
-                                _ => panic!("bad general divisor"),
-                            })
+                            .with_pllp(cfg.general_divisor)
                             .with_pllq(cfg.pll48_divisor)
                             .with_pllsrc(PllSource::Hse));
 
