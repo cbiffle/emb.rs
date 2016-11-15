@@ -14,28 +14,37 @@ struct Registers {
     pllcfgr:       Reg<u32>,
     cfgr:          Reg<u32>,
     cir:           Reg<u32>,
-    ahb1rstr:      Reg<u32>,
-    ahb2rstr:      Reg<u32>,
-    ahb3rstr:      Reg<u32>,
+    /// AHB peripheral reset registers AHB1RSTR - AHB3RSTR.
+    ///
+    /// Note that they are numbered from zero in this array.
+    ahb_rstr:      [Reg<u32>; 3],
     _reserved_1c:  Reg<u32>,
-    apb1rstr:      Reg<u32>,
-    apb2rstr:      Reg<u32>,
+    /// APB peripheral reset registers APB1RSTR - APB2RSTR.
+    ///
+    /// Note that they are numbered from zero in this array.
+    apb_rstr:      [Reg<u32>; 2],
     _reserved_28:  Reg<u32>,
     _reserved_2c:  Reg<u32>,
-    ahb1enr:       Reg<u32>,
-    ahb2enr:       Reg<u32>,
-    ahb3enr:       Reg<u32>,
+    /// AHB clock enable registers AHB1ENR - AHB3ENR.
+    ///
+    /// Note that they are numbered from zero in this array.
+    ahb_enr:       [Reg<u32>; 3],
     _reserved_3c:  Reg<u32>,
-    apb1enr:       Reg<u32>,
-    apb2enr:       Reg<u32>,
+    /// APB clock enable registers APB1ENR - APB2ENR.
+    ///
+    /// Note that they are numbered from zero in this array.
+    apb_enr:       [Reg<u32>; 2],
     _reserved_48:  Reg<u32>,
     _reserved_4c:  Reg<u32>,
-    ahb1lpenr:     Reg<u32>,
-    ahb2lpenr:     Reg<u32>,
-    ahb3lpenr:     Reg<u32>,
+    /// AHB low power clock enable registers AHB1LPENR - AHB3LPENR.
+    ///
+    /// Note that they are numbered from zero in this array.
+    ahb_lpenr:     [Reg<u32>; 3],
     _reserved_5c:  Reg<u32>,
-    apb1lpenr:     Reg<u32>,
-    apb2lpenr:     Reg<u32>,
+    /// APB low power clock enable registers APB1LPENR - APB2LPENR.
+    ///
+    /// Note that they are numbered from zero in this array.
+    apb_lpenr:     [Reg<u32>; 2],
     _reserved_68:  Reg<u32>,
     _reserved_6c:  Reg<u32>,
     bdcr:          Reg<u32>,
@@ -496,52 +505,106 @@ impl Rcc {
 /// integer type if you squint.
 #[derive(Copy, Clone)]
 pub enum AhbBus {
-    Ahb1,
-    Ahb2,
-    Ahb3,
+    Ahb1 = 0,
+    Ahb2 = 1,
+    Ahb3 = 2,
 }
 
-/// Names the processor's AHB-connected peripherals.
-#[derive(Copy, Clone, Debug)]
-pub enum AhbPeripheral {
-    GpioA,
-    GpioB,
-    GpioC,
-    GpioD,
-    // TODO: this is obviously not comprehensive!
-}
-
-impl AhbPeripheral {
-    /// Retrieves metadata about a peripheral: its bus, and the bit indices
-    /// for its reset and clock-enable control bits.
-    ///
-    /// Note: In C++ I would have encoded this information into the enum value.
-    /// I technically have that option in Rust, but doing it this way exposes
-    /// more information to the compiler and is leading to better code
-    /// generation, with fewer unnecessary range checks, in practice.
-    pub fn describe(self) -> (AhbBus, Option<u32>, Option<u32>) {
-        match self {
-            AhbPeripheral::GpioA => (AhbBus::Ahb1, Some(0), Some(0)),
-            AhbPeripheral::GpioB => (AhbBus::Ahb1, Some(1), Some(1)),
-            AhbPeripheral::GpioC => (AhbBus::Ahb1, Some(2), Some(2)),
-            AhbPeripheral::GpioD => (AhbBus::Ahb1, Some(3), Some(3)),
+/// Internal utility macro used to reduce peripheral enum boilerplate.
+macro_rules! peripheral_enum {
+    (
+        $(#[$m:meta])*
+        pub enum $tyname:ident ($bty:ty) {
+            $($name:ident = $bus:tt | $idx:tt
+              | $rst:tt | $clk:tt | $lp:tt,)*
         }
+    ) => {
+        $(#[$m])*
+        #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+        pub enum $tyname {
+            $(
+                $name = ($bus << 0) | ($idx << 8)
+                | ($rst << 16) | ($clk << 17) | ($lp << 18),
+            )*
+        }
+
+        impl $tyname {
+            #[inline]
+            pub fn get_bus(self) -> $bty {
+                let idx = (self as u32) & 0xF;
+                unsafe { ::core::mem::transmute(idx as u8) }
+            }
+
+            #[inline]
+            pub fn get_bit_index(self) -> u32 {
+                ((self as u32) >> 8) & 0x1F
+            }
+
+            #[inline]
+            pub fn has_rst(self) -> bool {
+                ((self as u32) & (1 << 16)) != 0
+            }
+
+            #[inline]
+            pub fn has_enr(self) -> bool {
+                ((self as u32) & (1 << 17)) != 0
+            }
+
+            #[inline]
+            pub fn has_lpenr(self) -> bool {
+                ((self as u32) & (1 << 18)) != 0
+            }
+        }
+    };
+}
+
+peripheral_enum! {
+    /// Names the processor's AHB-connected peripherals, for the purposes of
+    /// clock and reset domain control.
+    pub enum AhbPeripheral (AhbBus) {
+        //            bus  idx rst clk lp
+        GpioA        = 0 |  0 | 1 | 1 | 1,
+        GpioB        = 0 |  1 | 1 | 1 | 1,
+        GpioC        = 0 |  2 | 1 | 1 | 1,
+        GpioD        = 0 |  3 | 1 | 1 | 1,
+        GpioE        = 0 |  4 | 1 | 1 | 1,
+        GpioF        = 0 |  5 | 1 | 1 | 1,
+        GpioG        = 0 |  6 | 1 | 1 | 1,
+        GpioH        = 0 |  7 | 1 | 1 | 1,
+        GpioI        = 0 |  8 | 1 | 1 | 1,
+        GpioJ        = 0 |  9 | 1 | 1 | 1,
+        GpioK        = 0 | 10 | 1 | 1 | 1,
+        // 11 is unused
+        Crc          = 0 | 12 | 1 | 1 | 1,
+        // 13-14 are unused
+        FlashIface   = 0 | 15 | 0 | 0 | 1,
+        Sram1        = 0 | 16 | 0 | 0 | 1,
+        Sram2        = 0 | 17 | 0 | 0 | 1,
+        BackupSram   = 0 | 18 | 0 | 1 | 1,
+        Sram3        = 0 | 19 | 0 | 0 | 1,
+        CcmDataRam   = 0 | 20 | 0 | 1 | 0,
+        Dma1         = 0 | 21 | 1 | 1 | 1,
+        Dma2         = 0 | 22 | 1 | 1 | 1,
+        Dma2d        = 0 | 23 | 1 | 1 | 1,
+        // 24 is unused.
+        Ethernet     = 0 | 25 | 1 | 1 | 1,
+        EthernetTx   = 0 | 26 | 0 | 1 | 1,
+        EthernetRx   = 0 | 27 | 0 | 1 | 1,
+        EthernetPtp  = 0 | 28 | 0 | 1 | 1,
+        UsbOtgHs     = 0 | 29 | 1 | 1 | 1,
+        UsbOtgHsUlpi = 0 | 30 | 0 | 1 | 1,
     }
 }
 
 impl PeripheralName for AhbPeripheral {
     fn enable_clock(self, rcc: &Rcc) {
-        if let (bus, _, Some(ena)) = self.describe() {
-            let reg = match bus {
-                AhbBus::Ahb1 => &rcc.reg().ahb1enr,
-                AhbBus::Ahb2 => &rcc.reg().ahb2enr,
-                AhbBus::Ahb3 => &rcc.reg().ahb3enr,
-            };
-
-            reg.atomic_or(1 << ena)
-        } else {
+        if !self.has_enr() {
             panic!("cannot control clock for {:?}", self)
         }
+
+        rcc.reg()
+            .ahb_enr[self.get_bus() as usize]
+            .atomic_or(1 << self.get_bit_index())
     }
 }
 
@@ -549,43 +612,83 @@ impl PeripheralName for AhbPeripheral {
 /// integer type if you squint.
 #[derive(Copy, Clone)]
 pub enum ApbBus {
-    Apb1,
-    Apb2,
+    Apb1 = 0,
+    Apb2 = 1,
 }
 
-/// Names the processor's APB-connected peripherals.
-#[derive(Copy, Clone)]
-pub enum ApbPeripheral {
-    Tim2,
-    Tim3,
-    // TODO: this is obviously not comprehensive!
-}
+peripheral_enum! {
+    /// Names the processor's APB-connected peripherals, for the purposes of
+    /// clock and reset domain control.
+    pub enum ApbPeripheral (ApbBus) {
+        //            bus  idx rst clk lp
+        Tim2         = 0 |  0 | 1 | 1 | 1,
+        Tim3         = 0 |  1 | 1 | 1 | 1,
+        Tim4         = 0 |  2 | 1 | 1 | 1,
+        Tim5         = 0 |  3 | 1 | 1 | 1,
+        Tim6         = 0 |  4 | 1 | 1 | 1,
+        Tim7         = 0 |  5 | 1 | 1 | 1,
+        Tim12        = 0 |  6 | 1 | 1 | 1,
+        Tim13        = 0 |  7 | 1 | 1 | 1,
+        Tim14        = 0 |  8 | 1 | 1 | 1,
+        // 9-10
+        Wwdg         = 0 | 11 | 1 | 1 | 1,
+        // 12-13
+        Spi2         = 0 | 14 | 1 | 1 | 1,
+        Spi3         = 0 | 15 | 1 | 1 | 1,
+        // 16
+        Uart2        = 0 | 17 | 1 | 1 | 1,
+        Uart3        = 0 | 18 | 1 | 1 | 1,
+        Uart4        = 0 | 19 | 1 | 1 | 1,
+        Uart5        = 0 | 20 | 1 | 1 | 1,
+        I2c1         = 0 | 21 | 1 | 1 | 1,
+        I2c2         = 0 | 22 | 1 | 1 | 1,
+        I2c3         = 0 | 23 | 1 | 1 | 1,
+        // 24
+        Can1         = 0 | 25 | 1 | 1 | 1,
+        Can2         = 0 | 26 | 1 | 1 | 1,
+        // 27
+        Pwr          = 0 | 28 | 1 | 1 | 1,
+        Dac          = 0 | 29 | 1 | 1 | 1,
+        Uart7        = 0 | 30 | 1 | 1 | 1,
+        Uart8        = 0 | 31 | 1 | 1 | 1,
 
-impl ApbPeripheral {
-    /// Retrieves metadata about a peripheral: its bus, and its control bit
-    /// index in the reset and clock-enable registers.
-    ///
-    /// (APB peripherals use consistent reset and clock-enable bit positions,
-    /// so we don't have to model them separately as we do for AHB.  Also, all
-    /// the APB peripherals allow both clock and reset control, so we don't need
-    /// `Option`.  This also improves code generation.)
-    pub fn describe(self) -> (ApbBus, u32) {
-        match self {
-            ApbPeripheral::Tim2 => (ApbBus::Apb1, 0),
-            ApbPeripheral::Tim3 => (ApbBus::Apb1, 1),
-        }
+        // APB2
+        Tim1         = 1 |  0 | 1 | 1 | 1,
+        Tim8         = 1 |  1 | 1 | 1 | 1,
+        // 2-3
+        Usart1       = 1 |  4 | 1 | 1 | 1,
+        Usart6       = 1 |  5 | 1 | 1 | 1,
+        // 6-7
+        Adc1         = 1 |  8 | 1 | 1 | 1,
+        Adc2         = 1 |  9 | 0 | 1 | 1,
+        Adc3         = 1 | 10 | 0 | 1 | 1,
+        Sdio         = 1 | 11 | 1 | 1 | 1,
+        Spi1         = 1 | 12 | 1 | 1 | 1,
+        Spi4         = 1 | 13 | 1 | 1 | 1,
+        Syscfg       = 1 | 14 | 1 | 1 | 1,
+        // 15
+        Tim9         = 1 | 16 | 1 | 1 | 1,
+        Tim10        = 1 | 17 | 1 | 1 | 1,
+        Tim11        = 1 | 18 | 1 | 1 | 1,
+        // 19
+        Spi5         = 1 | 20 | 1 | 1 | 1,
+        Spi6         = 1 | 21 | 1 | 1 | 1,
+        Sai1         = 1 | 22 | 1 | 1 | 1,
+        // 23-25
+        Ltdc         = 1 | 26 | 1 | 1 | 1,
+        // 27-31
     }
 }
 
 impl PeripheralName for ApbPeripheral {
     fn enable_clock(self, rcc: &Rcc) {
-        let (bus, idx) = self.describe();
-        let reg = match bus {
-            ApbBus::Apb1 => &rcc.reg().apb1enr,
-            ApbBus::Apb2 => &rcc.reg().apb2enr,
-        };
+        if !self.has_enr() {
+            panic!("cannot control clock for {:?}", self)
+        }
 
-        reg.atomic_or(1 << idx)
+        rcc.reg()
+            .apb_enr[self.get_bus() as usize]
+            .atomic_or(1 << self.get_bit_index())
     }
 }
 
