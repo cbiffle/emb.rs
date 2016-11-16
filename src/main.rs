@@ -32,7 +32,7 @@ fn app() -> ! {
         crystal_hz: 8_000_000_f32,
         crystal_divisor: 4,
         vco_multiplier: 160,
-        general_divisor: rcc::Pllp::Div2,
+        general_divisor: rcc::SysPrescaler::Div2,
         pll48_divisor: 4,
 
         ahb_divisor: None,
