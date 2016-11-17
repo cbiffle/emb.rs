@@ -4,3 +4,4 @@ pub mod flash;
 pub mod gpio;
 pub mod irq;
 pub mod rcc;
+pub mod usart;
