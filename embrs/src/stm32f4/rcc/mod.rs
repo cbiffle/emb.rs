@@ -193,8 +193,10 @@ macro_rules! peripheral_enum {
     (
         $(#[$m:meta])*
         pub enum $tyname:ident ($bty:ident) {
-            $($name:ident = $bus:tt | $idx:tt
-              | $rst:tt | $clk:tt | $lp:tt,)*
+            $(
+                $(#[$e_m:meta])*
+                p $name:ident = $bus:tt | $idx:tt | $rst:tt | $clk:tt | $lp:tt,
+            )*
         }
     ) => {
         $(#[$m])*
@@ -202,6 +204,7 @@ macro_rules! peripheral_enum {
         #[repr(u32)]
         pub enum $tyname {
             $(
+                $(#[$e_m])*
                 $name = ($bty::$bus as u32) | ($idx << 8)
                     | ($rst << 16) | ($clk << 17) | ($lp << 18),
             )*
@@ -241,50 +244,54 @@ peripheral_enum! {
     /// Names the processor's AHB-connected peripherals, for the purposes of
     /// clock and reset domain control.
     pub enum AhbPeripheral (AhbBus) {
-        //             bus    idx rst clk lp
-        GpioA        = Ahb1 |  0 | 1 | 1 | 1,
-        GpioB        = Ahb1 |  1 | 1 | 1 | 1,
-        GpioC        = Ahb1 |  2 | 1 | 1 | 1,
-        GpioD        = Ahb1 |  3 | 1 | 1 | 1,
-        GpioE        = Ahb1 |  4 | 1 | 1 | 1,
-        GpioF        = Ahb1 |  5 | 1 | 1 | 1,
-        GpioG        = Ahb1 |  6 | 1 | 1 | 1,
-        GpioH        = Ahb1 |  7 | 1 | 1 | 1,
-        GpioI        = Ahb1 |  8 | 1 | 1 | 1,
-        GpioJ        = Ahb1 |  9 | 1 | 1 | 1,
-        GpioK        = Ahb1 | 10 | 1 | 1 | 1,
+        //               bus    idx rst clk lp
+        p GpioA        = Ahb1 |  0 | 1 | 1 | 1,
+        p GpioB        = Ahb1 |  1 | 1 | 1 | 1,
+        p GpioC        = Ahb1 |  2 | 1 | 1 | 1,
+        p GpioD        = Ahb1 |  3 | 1 | 1 | 1,
+        p GpioE        = Ahb1 |  4 | 1 | 1 | 1,
+        p GpioF        = Ahb1 |  5 | 1 | 1 | 1,
+        p GpioG        = Ahb1 |  6 | 1 | 1 | 1,
+        p GpioH        = Ahb1 |  7 | 1 | 1 | 1,
+        p GpioI        = Ahb1 |  8 | 1 | 1 | 1,
+        #[cfg(feature = "soc_family:stm32f4[23]")]
+        p GpioJ        = Ahb1 |  9 | 1 | 1 | 1,
+        #[cfg(feature = "soc_family:stm32f4[23]")]
+        p GpioK        = Ahb1 | 10 | 1 | 1 | 1,
         // 11 is unused
-        Crc          = Ahb1 | 12 | 1 | 1 | 1,
+        p Crc          = Ahb1 | 12 | 1 | 1 | 1,
         // 13-14 are unused
-        FlashIface   = Ahb1 | 15 | 0 | 0 | 1,
-        Sram1        = Ahb1 | 16 | 0 | 0 | 1,
-        Sram2        = Ahb1 | 17 | 0 | 0 | 1,
-        BackupSram   = Ahb1 | 18 | 0 | 1 | 1,
-        Sram3        = Ahb1 | 19 | 0 | 0 | 1,
-        CcmDataRam   = Ahb1 | 20 | 0 | 1 | 0,
-        Dma1         = Ahb1 | 21 | 1 | 1 | 1,
-        Dma2         = Ahb1 | 22 | 1 | 1 | 1,
-        Dma2d        = Ahb1 | 23 | 1 | 1 | 1,
+        p FlashIface   = Ahb1 | 15 | 0 | 0 | 1,
+        p Sram1        = Ahb1 | 16 | 0 | 0 | 1,
+        p Sram2        = Ahb1 | 17 | 0 | 0 | 1,
+        p BackupSram   = Ahb1 | 18 | 0 | 1 | 1,
+        #[cfg(feature = "soc_family:stm32f4[23]")]
+        p Sram3        = Ahb1 | 19 | 0 | 0 | 1,
+        p CcmDataRam   = Ahb1 | 20 | 0 | 1 | 0,
+        p Dma1         = Ahb1 | 21 | 1 | 1 | 1,
+        p Dma2         = Ahb1 | 22 | 1 | 1 | 1,
+        #[cfg(feature = "soc_family:stm32f4[23]")]
+        p Dma2d        = Ahb1 | 23 | 1 | 1 | 1,
         // 24 is unused.
-        Ethernet     = Ahb1 | 25 | 1 | 1 | 1,
-        EthernetTx   = Ahb1 | 26 | 0 | 1 | 1,
-        EthernetRx   = Ahb1 | 27 | 0 | 1 | 1,
-        EthernetPtp  = Ahb1 | 28 | 0 | 1 | 1,
-        UsbOtgHs     = Ahb1 | 29 | 1 | 1 | 1,
-        UsbOtgHsUlpi = Ahb1 | 30 | 0 | 1 | 1,
+        p Ethernet     = Ahb1 | 25 | 1 | 1 | 1,
+        p EthernetTx   = Ahb1 | 26 | 0 | 1 | 1,
+        p EthernetRx   = Ahb1 | 27 | 0 | 1 | 1,
+        p EthernetPtp  = Ahb1 | 28 | 0 | 1 | 1,
+        p UsbOtgHs     = Ahb1 | 29 | 1 | 1 | 1,
+        p UsbOtgHsUlpi = Ahb1 | 30 | 0 | 1 | 1,
         // 31 is unused.
 
         // AHB2
-        Dcmi         = Ahb2 |  0 | 1 | 1 | 1,
+        p Dcmi         = Ahb2 |  0 | 1 | 1 | 1,
         // 1-3 unused
-        Cryp         = Ahb2 |  4 | 1 | 1 | 1,
-        Hash         = Ahb2 |  5 | 1 | 1 | 1,
-        Rng          = Ahb2 |  6 | 1 | 1 | 1,
-        UsbOtgFs     = Ahb2 |  7 | 1 | 1 | 1,
+        p Cryp         = Ahb2 |  4 | 1 | 1 | 1,
+        p Hash         = Ahb2 |  5 | 1 | 1 | 1,
+        p Rng          = Ahb2 |  6 | 1 | 1 | 1,
+        p UsbOtgFs     = Ahb2 |  7 | 1 | 1 | 1,
         // 8 - 31 unused
 
         // AHB3
-        Fsmc         = Ahb3 |  0 | 1 | 1 | 1,
+        p Fsmc         = Ahb3 |  0 | 1 | 1 | 1,
         // 1 - 31 unused
     }
 }
@@ -313,62 +320,69 @@ peripheral_enum! {
     /// Names the processor's APB-connected peripherals, for the purposes of
     /// clock and reset domain control.
     pub enum ApbPeripheral (ApbBus) {
-        //             bus    idx rst clk lp
-        Tim2         = Apb1 |  0 | 1 | 1 | 1,
-        Tim3         = Apb1 |  1 | 1 | 1 | 1,
-        Tim4         = Apb1 |  2 | 1 | 1 | 1,
-        Tim5         = Apb1 |  3 | 1 | 1 | 1,
-        Tim6         = Apb1 |  4 | 1 | 1 | 1,
-        Tim7         = Apb1 |  5 | 1 | 1 | 1,
-        Tim12        = Apb1 |  6 | 1 | 1 | 1,
-        Tim13        = Apb1 |  7 | 1 | 1 | 1,
-        Tim14        = Apb1 |  8 | 1 | 1 | 1,
+        //               bus    idx rst clk lp
+        p Tim2         = Apb1 |  0 | 1 | 1 | 1,
+        p Tim3         = Apb1 |  1 | 1 | 1 | 1,
+        p Tim4         = Apb1 |  2 | 1 | 1 | 1,
+        p Tim5         = Apb1 |  3 | 1 | 1 | 1,
+        p Tim6         = Apb1 |  4 | 1 | 1 | 1,
+        p Tim7         = Apb1 |  5 | 1 | 1 | 1,
+        p Tim12        = Apb1 |  6 | 1 | 1 | 1,
+        p Tim13        = Apb1 |  7 | 1 | 1 | 1,
+        p Tim14        = Apb1 |  8 | 1 | 1 | 1,
         // 9-10
-        Wwdg         = Apb1 | 11 | 1 | 1 | 1,
+        p Wwdg         = Apb1 | 11 | 1 | 1 | 1,
         // 12-13
-        Spi2         = Apb1 | 14 | 1 | 1 | 1,
-        Spi3         = Apb1 | 15 | 1 | 1 | 1,
+        p Spi2         = Apb1 | 14 | 1 | 1 | 1,
+        p Spi3         = Apb1 | 15 | 1 | 1 | 1,
         // 16
-        Uart2        = Apb1 | 17 | 1 | 1 | 1,
-        Uart3        = Apb1 | 18 | 1 | 1 | 1,
-        Uart4        = Apb1 | 19 | 1 | 1 | 1,
-        Uart5        = Apb1 | 20 | 1 | 1 | 1,
-        I2c1         = Apb1 | 21 | 1 | 1 | 1,
-        I2c2         = Apb1 | 22 | 1 | 1 | 1,
-        I2c3         = Apb1 | 23 | 1 | 1 | 1,
+        p Uart2        = Apb1 | 17 | 1 | 1 | 1,
+        p Uart3        = Apb1 | 18 | 1 | 1 | 1,
+        p Uart4        = Apb1 | 19 | 1 | 1 | 1,
+        p Uart5        = Apb1 | 20 | 1 | 1 | 1,
+        p I2c1         = Apb1 | 21 | 1 | 1 | 1,
+        p I2c2         = Apb1 | 22 | 1 | 1 | 1,
+        p I2c3         = Apb1 | 23 | 1 | 1 | 1,
         // 24
-        Can1         = Apb1 | 25 | 1 | 1 | 1,
-        Can2         = Apb1 | 26 | 1 | 1 | 1,
+        p Can1         = Apb1 | 25 | 1 | 1 | 1,
+        p Can2         = Apb1 | 26 | 1 | 1 | 1,
         // 27
-        Pwr          = Apb1 | 28 | 1 | 1 | 1,
-        Dac          = Apb1 | 29 | 1 | 1 | 1,
-        Uart7        = Apb1 | 30 | 1 | 1 | 1,
-        Uart8        = Apb1 | 31 | 1 | 1 | 1,
+        p Pwr          = Apb1 | 28 | 1 | 1 | 1,
+        p Dac          = Apb1 | 29 | 1 | 1 | 1,
+        #[cfg(feature = "soc_family:stm32f4[23]")]
+        p Uart7        = Apb1 | 30 | 1 | 1 | 1,
+        #[cfg(feature = "soc_family:stm32f4[23]")]
+        p Uart8        = Apb1 | 31 | 1 | 1 | 1,
 
         // APB2
-        Tim1         = Apb2 |  0 | 1 | 1 | 1,
-        Tim8         = Apb2 |  1 | 1 | 1 | 1,
+        p Tim1         = Apb2 |  0 | 1 | 1 | 1,
+        p Tim8         = Apb2 |  1 | 1 | 1 | 1,
         // 2-3
-        Usart1       = Apb2 |  4 | 1 | 1 | 1,
-        Usart6       = Apb2 |  5 | 1 | 1 | 1,
+        p Usart1       = Apb2 |  4 | 1 | 1 | 1,
+        p Usart6       = Apb2 |  5 | 1 | 1 | 1,
         // 6-7
-        Adc1         = Apb2 |  8 | 1 | 1 | 1,
-        Adc2         = Apb2 |  9 | 0 | 1 | 1,
-        Adc3         = Apb2 | 10 | 0 | 1 | 1,
-        Sdio         = Apb2 | 11 | 1 | 1 | 1,
-        Spi1         = Apb2 | 12 | 1 | 1 | 1,
-        Spi4         = Apb2 | 13 | 1 | 1 | 1,
-        Syscfg       = Apb2 | 14 | 1 | 1 | 1,
+        p Adc1         = Apb2 |  8 | 1 | 1 | 1,
+        p Adc2         = Apb2 |  9 | 0 | 1 | 1,
+        p Adc3         = Apb2 | 10 | 0 | 1 | 1,
+        p Sdio         = Apb2 | 11 | 1 | 1 | 1,
+        p Spi1         = Apb2 | 12 | 1 | 1 | 1,
+        #[cfg(feature = "soc_family:stm32f4[23]")]
+        p Spi4         = Apb2 | 13 | 1 | 1 | 1,
+        p Syscfg       = Apb2 | 14 | 1 | 1 | 1,
         // 15
-        Tim9         = Apb2 | 16 | 1 | 1 | 1,
-        Tim10        = Apb2 | 17 | 1 | 1 | 1,
-        Tim11        = Apb2 | 18 | 1 | 1 | 1,
+        p Tim9         = Apb2 | 16 | 1 | 1 | 1,
+        p Tim10        = Apb2 | 17 | 1 | 1 | 1,
+        p Tim11        = Apb2 | 18 | 1 | 1 | 1,
         // 19
-        Spi5         = Apb2 | 20 | 1 | 1 | 1,
-        Spi6         = Apb2 | 21 | 1 | 1 | 1,
-        Sai1         = Apb2 | 22 | 1 | 1 | 1,
+        #[cfg(feature = "soc_family:stm32f4[23]")]
+        p Spi5         = Apb2 | 20 | 1 | 1 | 1,
+        #[cfg(feature = "soc_family:stm32f4[23]")]
+        p Spi6         = Apb2 | 21 | 1 | 1 | 1,
+        #[cfg(feature = "soc_family:stm32f4[23]")]
+        p Sai1         = Apb2 | 22 | 1 | 1 | 1,
         // 23-25
-        Ltdc         = Apb2 | 26 | 1 | 1 | 1,
+        #[cfg(feature = "soc_family:stm32f4[23]")]
+        p Ltdc         = Apb2 | 26 | 1 | 1 | 1,
         // 27-31
     }
 }

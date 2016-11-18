@@ -48,7 +48,9 @@ pub struct Registers {
     pub _reserved_7c:  Reg<u32>,
     pub sscgr:         Reg<u32>,
     pub plli2scfgr:    Reg<u32>,
+    #[cfg(feature = "soc_family:stm32f4[23]")]
     pub pllsaicfgr:    Reg<u32>,
+    #[cfg(feature = "soc_family:stm32f4[23]")]
     pub dckcfgr:       Reg<u32>,
 }
 
@@ -64,8 +66,10 @@ bit_wrappers! {
 impl Cr {
     bitfield_accessors! {
         /// Ready flag for the PLLI2S.
+        #[cfg(feature = "soc_family:stm32f4[23]")]
         pub total [27] get_plli2srdy / with_plli2srdy: bool,
         /// Turns the PLLI2S on/off.
+        #[cfg(feature = "soc_family:stm32f4[23]")]
         pub total [26] get_plli2son / with_plli2son: bool,
         /// Ready flag for the main PLL.
         pub total [25] get_pllrdy / with_pllrdy: bool,

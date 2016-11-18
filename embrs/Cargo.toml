@@ -10,3 +10,11 @@ bitflags = "0.7"
 default = []
 
 app_panic_fmt = []
+
+"soc:stm32f407" = [
+  "soc_family:stm32f4[01]",
+]
+
+"soc_family:stm32f4[01]" = ["soc_family:stm32f4"]
+
+"soc_family:stm32f4" = []

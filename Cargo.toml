@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["cbiffle <code@cliffle.com>"]
 
 [dependencies]
-embrs = { path = "embrs" }
+embrs = { path = "embrs", features = [ "soc:stm32f407" ] }
 
 [profile.dev]
 panic = "abort"
