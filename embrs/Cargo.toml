@@ -17,4 +17,6 @@ app_panic_fmt = []
 
 "soc_family:stm32f4[01]" = ["soc_family:stm32f4"]
 
-"soc_family:stm32f4" = []
+"soc_family:stm32f4" = ["cpu:cortex-m4f"]
+
+"cpu:cortex-m4f" = []

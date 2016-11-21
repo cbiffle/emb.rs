@@ -1,6 +1,7 @@
 pub mod exc;
 pub mod nvic;
 pub mod reg;
+pub mod scb;
 pub mod sys_tick;
 
 #[cfg(target_os = "none")]

@@ -15,6 +15,9 @@
 
 #![no_builtins]
 
+use arm_m;
+use arm_m::scb::{self, SCB};
+
 // Symbols exported by compatible linker scripts.
 extern {
     static _data_load: u32;
@@ -33,6 +36,15 @@ extern {
 /// would trash memory with unpredictable results.
 #[inline(never)]
 pub unsafe fn initialize_runtime() {
+    match () {
+        #[cfg(feature = "cpu:cortex-m4f")]
+        () => {
+            enable_cortex_m4_fpu();
+        },
+        #[cfg(not(feature = "cpu:cortex-m4f"))]
+        () => (),
+    }
+
     initialize_data();
     zero_bss()
 }
@@ -56,4 +68,11 @@ unsafe fn zero_bss() {
         *dst = 0u32;
         dst = dst.offset(1);
     }
+}
+
+#[cfg(feature = "cpu:cortex-m4f")]
+fn enable_cortex_m4_fpu() {
+    SCB.update_cpacr(|v| v.with_cp11(scb::CpAccess::Full)
+                     .with_cp10(scb::CpAccess::Full));
+    arm_m::instruction_synchronization_barrier()
 }
