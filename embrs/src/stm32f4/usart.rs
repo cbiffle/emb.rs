@@ -153,3 +153,56 @@ bit_enums! {
         OneBit = 1,
     }
 }
+
+
+// ------------------------------------------------------------------
+
+pub struct Usart {
+    reg: *const Registers,
+}
+
+macro_rules! reg_accessors {
+    ($name:ident, $ty:ident, $read:ident, $write:ident, $update:ident) => {
+        pub fn $write(&self, v: $ty) {
+            self.reg().$name.set(v.0)
+        }
+
+        pub fn $read(&self) -> $ty {
+            $ty(self.reg().$name.get())
+        }
+
+        pub fn $update<F: FnOnce($ty) -> $ty>(&self, f: F) {
+            self.$write(f(self.$read()))
+        }
+    };
+}
+
+impl Usart {
+    fn reg(&self) -> &Registers {
+        unsafe {
+            &*self.reg
+        }
+    }
+
+    reg_accessors!(cr1, Cr1, read_cr1, write_cr1, update_cr1);
+    reg_accessors!(brr, Brr, read_brr, write_brr, update_brr);
+
+    pub fn send8(&self, v: u8) {
+        self.reg().dr.set(v as u32)
+    }
+}
+
+unsafe impl Sync for Usart {}
+
+macro_rules! static_usart {
+    ($name:ident, $addr:expr) => {
+        pub static $name: Usart = Usart {
+            reg: $addr as *const Registers,
+        };
+    };
+}
+
+static_usart!(USART2, 0x40004400);
+
+
+
