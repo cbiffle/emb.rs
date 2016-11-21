@@ -54,6 +54,38 @@ pub struct ClockConfig {
     pub flash_latency: u32,
 }
 
+/// Packages up the various internal clock speeds, which can be computed from a
+/// `ClockConfig`.  (We compute them all at once because they're
+/// interdependent.)
+pub struct ClockSpeeds {
+    pub cpu: f32,
+    pub ahb: f32,
+    pub apb1: f32,
+    pub apb2: f32,
+    pub pll48: f32,
+}
+
+impl ClockSpeeds {
+    pub fn get_clock_for<P: PeripheralName>(&self, p: P) -> f32 {
+        p.get_clock(self)
+    }
+}
+
+impl ClockConfig {
+    pub fn compute_speeds(&self) -> ClockSpeeds {
+        let vco_in_hz = self.crystal_hz / (self.crystal_divisor as f32);
+        let vco_out_hz = vco_in_hz * (self.vco_multiplier as f32);
+        let cpu = vco_out_hz / (self.general_divisor.to_divisor() as f32);
+        ClockSpeeds {
+            cpu: cpu,
+            ahb: cpu / (self.ahb_divisor.to_divisor() as f32),
+            apb1: cpu / (self.apb1_divisor.to_divisor() as f32),
+            apb2: cpu / (self.apb2_divisor.to_divisor() as f32),
+            pll48: vco_out_hz / (self.pll48_divisor as f32),
+        }
+    }
+}
+
 /// Describes types that name peripherals in the RCC.  This is used to fake
 /// overloading on `ApbPeripheral` and `AhbPeripheral`.  It isn't designed to
 /// be implemented by types outside this module.
@@ -66,6 +98,9 @@ pub trait PeripheralName {
     /// clocks have a bit allocated in one of the RCC's `AxBxENR` registers.
     /// Check the STM32F4 Reference Manual.
     fn enable_clock(self, rcc: &Rcc);
+
+    /// Gets the clock speed for this peripheral, given the current speeds.
+    fn get_clock(self, speeds: &ClockSpeeds) -> f32;
 }
 
 impl Rcc {
@@ -308,6 +343,10 @@ impl PeripheralName for AhbPeripheral {
             .ahb_enr[self.get_bus() as usize]
             .atomic_or(1 << self.get_bit_index())
     }
+
+    fn get_clock(self, speeds: &ClockSpeeds) -> f32 {
+        speeds.ahb
+    }
 }
 
 /// Names the processor's APB buses.  This can be seen as a bounded-range
@@ -398,6 +437,12 @@ impl PeripheralName for ApbPeripheral {
         rcc.reg()
             .apb_enr[self.get_bus() as usize]
             .atomic_or(1 << self.get_bit_index())
+    }
+    fn get_clock(self, speeds: &ClockSpeeds) -> f32 {
+        match self.get_bus() {
+            ApbBus::Apb1 => speeds.apb1,
+            ApbBus::Apb2 => speeds.apb2,
+        }
     }
 }
 
