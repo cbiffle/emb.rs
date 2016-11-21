@@ -234,4 +234,5 @@ macro_rules! static_gpio {
     };
 }
 
+static_gpio!(GPIOA, 0x40020000);
 static_gpio!(GPIOD, 0x40020c00);
