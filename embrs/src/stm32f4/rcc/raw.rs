@@ -289,6 +289,42 @@ bit_enums! {
     }
 }
 
+pub trait ClockDivisor {
+    fn to_divisor(self) -> u32;
+}
+
+impl ClockDivisor for ApbPrescaler {
+    fn to_divisor(self) -> u32 {
+        match self {
+            ApbPrescaler::Div2  =>  2,
+            ApbPrescaler::Div4  =>  4,
+            ApbPrescaler::Div8  =>  8,
+            ApbPrescaler::Div16 => 16,
+        }
+    }
+}
+
+impl<T: ClockDivisor> ClockDivisor for Option<T> {
+    fn to_divisor(self) -> u32 {
+        self.map(|v| v.to_divisor()).unwrap_or(1)
+    }
+}
+
+impl ClockDivisor for AhbPrescaler {
+    fn to_divisor(self) -> u32 {
+        match self {
+            AhbPrescaler::Div2   =>   2,
+            AhbPrescaler::Div4   =>   4,
+            AhbPrescaler::Div8   =>   8,
+            AhbPrescaler::Div16  =>  16,
+            AhbPrescaler::Div64  =>  64,
+            AhbPrescaler::Div128 => 128,
+            AhbPrescaler::Div256 => 256,
+            AhbPrescaler::Div512 => 512,
+        }
+    }
+}
+
 impl Pllcfgr {
     bitfield_accessors! {
         /// Prescaler for the PLL48 domain.
@@ -329,6 +365,17 @@ bit_enums! {
         Div4 = 0b01,
         Div6 = 0b10,
         Div8 = 0b11,
+    }
+}
+
+impl ClockDivisor for Pllp {
+    fn to_divisor(self) -> u32 {
+        match self {
+            Pllp::Div2 => 2,
+            Pllp::Div4 => 4,
+            Pllp::Div6 => 6,
+            Pllp::Div8 => 8,
+        }
     }
 }
 

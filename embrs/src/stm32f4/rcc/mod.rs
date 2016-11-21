@@ -11,6 +11,8 @@ pub mod raw;
 pub use self::raw::{AhbPrescaler, ApbPrescaler, Cr, Cfgr, Pllcfgr};
 pub use self::raw::Pllp as SysPrescaler;
 
+use self::raw::ClockDivisor;
+
 /// At startup, before the RCC has been reconfigured, the STM32F4 runs at 16MHz.
 pub const BOOT_CLOCK_HZ : u32 = 16_000_000;
 
