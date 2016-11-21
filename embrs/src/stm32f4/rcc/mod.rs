@@ -336,8 +336,8 @@ peripheral_enum! {
         p Spi2         = Apb1 | 14 | 1 | 1 | 1,
         p Spi3         = Apb1 | 15 | 1 | 1 | 1,
         // 16
-        p Uart2        = Apb1 | 17 | 1 | 1 | 1,
-        p Uart3        = Apb1 | 18 | 1 | 1 | 1,
+        p Usart2       = Apb1 | 17 | 1 | 1 | 1,
+        p Usart3       = Apb1 | 18 | 1 | 1 | 1,
         p Uart4        = Apb1 | 19 | 1 | 1 | 1,
         p Uart5        = Apb1 | 20 | 1 | 1 | 1,
         p I2c1         = Apb1 | 21 | 1 | 1 | 1,
