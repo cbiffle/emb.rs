@@ -20,7 +20,7 @@ use arm_m::scb::{self, SCB};
 #[inline(never)]
 #[no_mangle]
 #[naked]
-pub unsafe extern fn _reset_vector() {
+pub unsafe extern fn _reset_vector() -> ! {
     asm!(r#"
     .extern _data_load, _data, _edata, _bss, _ebss
     .extern _embrs_init_array_start, _embrs_init_array_end
@@ -60,8 +60,9 @@ pub unsafe extern fn _reset_vector() {
     @ Jump to application main.
     movs r0, #0
     movs r1, #1
-    b embrs_main
-    "#)
+    bl embrs_main
+    "#);
+    loop {}
 }
 
 /// The emb.rs startup routine can call functions after data is initialized, but

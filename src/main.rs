@@ -113,9 +113,6 @@ extern "C" fn toggle_isr() {
 }
 
 extern "C" fn trap() { loop {} }
-extern "C" {
-    fn _reset_vector() -> !;
-}
 
 /// The ROM vector table.  This is marked as the program entry point in the
 /// linker script, ensuring that any object reachable from this table is
@@ -144,7 +141,7 @@ pub static ISR_VECTORS : exc::ExceptionTable = exc::ExceptionTable {
     sys_tick: Some(toggle_isr),
 
     .. exc::empty_exception_table(unsafe { &__STACK_BASE },
-                                  _reset_vector)
+                                  arm_m::startup::_reset_vector)
 };
 
 /******************************************************************************/
