@@ -237,7 +237,7 @@ macro_rules! peripheral_enum {
         }
     ) => {
         $(#[$m])*
-        #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+        #[derive(Copy, Clone, Eq, PartialEq)]
         #[repr(u32)]
         pub enum $tyname {
             $(
@@ -336,7 +336,9 @@ peripheral_enum! {
 impl PeripheralName for AhbPeripheral {
     fn enable_clock(self, rcc: &Rcc) {
         if !self.has_enr() {
-            panic!("cannot control clock for {:?}", self)
+            panic!("cannot control clock for AHB{} idx {}",
+                   (self.get_bus() as u32) + 1,
+                   self.get_bit_index())
         }
 
         rcc.reg()
@@ -431,7 +433,9 @@ peripheral_enum! {
 impl PeripheralName for ApbPeripheral {
     fn enable_clock(self, rcc: &Rcc) {
         if !self.has_enr() {
-            panic!("cannot control clock for {:?}", self)
+            panic!("cannot control clock for APB{} idx {}",
+                   (self.get_bus() as u32) + 1,
+                   self.get_bit_index())
         }
 
         rcc.reg()
