@@ -12,19 +12,10 @@
 //! }
 //! ```
 
-#![no_builtins]
+#![macro_use]
 
 use arm_m;
 use arm_m::scb::{self, SCB};
-
-// Symbols exported by compatible linker scripts.
-extern {
-    static _data_load: u32;
-    static mut _data: u32;
-    static mut _edata: u32;
-    static mut _bss: u32;
-    static mut _ebss: u32;
-}
 
 #[inline(never)]
 #[no_mangle]
@@ -73,13 +64,34 @@ pub unsafe extern fn _reset_vector() {
     "#)
 }
 
+/// The emb.rs startup routine can call functions after data is initialized, but
+/// before main.  Functions must be of this type.
 pub type InitHook = extern fn() -> ();
 
+/// Defines one or more init hooks, which are functions that will be called
+/// after the basic Rust runtime invariants have been established, but before
+/// main.
+///
+/// Due to limitations in the Rust tooling, init hooks will produce `pub static`
+/// symbols in their defining module, raising the possibility that clients could
+/// call your init hooks directly.  Sorry.
+///
+/// Syntax:
+///
+/// ```
+/// extern fn my_init_hook() {
+///     activate_lasers()
+/// }
+///
+/// embrs_init_hooks! {
+///     pub init_hook MY_INIT_HOOK = my_init_hook;
+/// }
+/// ```
 macro_rules! embrs_init_hooks {
     (
         $(
             $(#[$m:meta])*
-            init_hook $name:ident = $f:ident;
+            pub init_hook $name:ident = $f:ident;
         )*
     ) => {
         $(
@@ -101,5 +113,5 @@ extern fn enable_cortex_m4_fpu() {
 
 embrs_init_hooks! {
     #[cfg(feature = "cpu:cortex-m4f")]
-    init_hook EMBRS_FPU_ON = enable_cortex_m4_fpu;
+    pub init_hook EMBRS_FPU_ON = enable_cortex_m4_fpu;
 }
