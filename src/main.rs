@@ -1,11 +1,9 @@
 //! An example program for the STM32F4DISCOVERY board.
 
-#![feature(asm)]
 #![feature(const_fn)]
-#![feature(lang_items)]
 
-#![no_std]
-#![no_main]
+#![no_std]      // because we can
+#![no_main]     // to use the emb.rs startup code
 
 extern crate embrs;
 
@@ -39,7 +37,6 @@ const CLOCKS : rcc::ClockConfig = rcc::ClockConfig {
 
     flash_latency: 5,
 };
-
 
 /// The application entry point.
 #[no_mangle]
