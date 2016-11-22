@@ -40,6 +40,10 @@ SECTIONS {
         FILL(0xff)
         *(.text*)
         *(.rodata .rodata.*)
+        . = ALIGN(4);
+        _embrs_init_array_start = .;
+        KEEP(*(.embrs_init_array*))
+        _embrs_init_array_end = .;
     } > rom
 
     /*
@@ -57,13 +61,6 @@ SECTIONS {
         /* Round up to a word boundary, so the runtime can use word copies. */
         . = ALIGN(4);
 
-        /*
-         * We need at least a word of initialized data or else the runtime
-         * startup routine will barf, because we can't explain to it that
-         * _data and _edata might alias.
-         */
-        . = MAX(., _data + 4);
-
         /* End of data to initialize, for the runtime. */
         _edata = .;
     } > ram AT>rom = 0xff
@@ -80,13 +77,6 @@ SECTIONS {
         *(COMMON)  /* Not clear that Rust generates COMMON data, but. */
         /* Round up to a word boundary, so the runtime can write whole words. */
         . = ALIGN(4);
-
-        /*
-         * We need at least a word of BSS or else the runtime startup routine
-         * will barf, because we can't explain to it that _bss and _ebss might
-         * alias.
-         */
-        . = MAX(., _bss + 4);
 
         /* End of area to zero, for the runtime. */
         _ebss = .;

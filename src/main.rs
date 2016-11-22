@@ -41,9 +41,9 @@ const CLOCKS : rcc::ClockConfig = rcc::ClockConfig {
 };
 
 
-/// The application entry point.  This name isn't special, it's called from
-/// `reset_handler` below.  Note that we're in safe code at this point.
-fn app() -> ! {
+/// The application entry point.
+#[no_mangle]
+pub extern fn embrs_main() -> ! {
     RCC.configure_clocks(&CLOCKS);
 
     init_leds();
@@ -113,6 +113,9 @@ extern "C" fn toggle_isr() {
 }
 
 extern "C" fn trap() { loop {} }
+extern "C" {
+    fn _reset_vector() -> !;
+}
 
 /// The ROM vector table.  This is marked as the program entry point in the
 /// linker script, ensuring that any object reachable from this table is
@@ -141,7 +144,7 @@ pub static ISR_VECTORS : exc::ExceptionTable = exc::ExceptionTable {
     sys_tick: Some(toggle_isr),
 
     .. exc::empty_exception_table(unsafe { &__STACK_BASE },
-                                  reset_handler)
+                                  _reset_vector)
 };
 
 /******************************************************************************/
@@ -152,12 +155,4 @@ extern {
     /// This symbol is exported by the linker script, and defines the initial
     /// stack pointer.
     static __STACK_BASE: u32;
-}
-
-/// This function will be "called" by the processor at reset.  Note that none of
-/// the C or Rust environment has been established --- in particular, this
-/// function is responsible for initializing any global data it might need!
-pub unsafe extern fn reset_handler() -> ! {
-    arm_m::startup::initialize_runtime();
-    app()
 }

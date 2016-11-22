@@ -1,17 +1,16 @@
 //! Rust runtime startup support for ARMvx-M bare metal targets.
 //!
-//! This is not *inherently* ARM-specific, but it just so happens that the
-//! ARMvx-M boot sequence establishes enough of Rust's ABI that we can do
-//! startup without resorting to assembly code or linker magic.
+//! To make use of this module, specify `_reset_vector` as your reset vector,
+//! and define your application entry point like so:
 //!
-//! To make use of this module, call `initialize_runtime` *immediately* upon
-//! entry to your reset vector:
 //!
 //! ```
-//! pub unsafe fn reset_handler() -> ! {
-//!     arm_m::startup::initialize_runtime();
+//! #[no_mangle]
+//! pub extern fn embrs_main() -> ! {
+//!     // code here
 //!     loop {}
 //! }
+//! ```
 
 #![no_builtins]
 
@@ -27,52 +26,80 @@ extern {
     static mut _ebss: u32;
 }
 
-/// Establishes the basic guarantees required by the Rust runtime, by
-/// initializing any initialized variables and zeroing BSS.
-///
-/// # Safety
-///
-/// It is safe to call this exactly once, shortly after reset.  Using it later
-/// would trash memory with unpredictable results.
 #[inline(never)]
-pub unsafe fn initialize_runtime() {
-    match () {
-        #[cfg(feature = "cpu:cortex-m4f")]
-        () => {
-            enable_cortex_m4_fpu();
-        },
-        #[cfg(not(feature = "cpu:cortex-m4f"))]
-        () => (),
-    }
+#[no_mangle]
+#[naked]
+pub unsafe extern fn _reset_vector() {
+    asm!(r#"
+    .extern _data_load, _data, _edata, _bss, _ebss
+    .extern _embrs_init_array_start, _embrs_init_array_end
+    .extern embrs_main
 
-    initialize_data();
-    zero_bss()
+    @ Initialize data.
+    ldr r0, =_data_load
+    ldr r1, =_data
+    ldr r2, =_edata
+    b 1f
+
+0:  ldr r3, [r0], #4
+    str r3, [r1], #4
+1:  cmp r1, r2
+    bne 0b
+
+    @ Zero BSS.
+    ldr r0, =_bss
+    ldr r1, =_ebss
+    movs r2, #0
+    b 1f
+
+0:  str r2, [r0], #4
+1:  cmp r0, r1
+    bne 0b
+
+    @ Call any pre-main Rust hooks.
+    ldr r4, =_embrs_init_array_start
+    ldr r5, =_embrs_init_array_end
+    b 1f
+
+0:  ldr r0, [r4], #4
+    blx r0
+1:  cmp r4, r5
+    bne 0b
+
+    @ Jump to application main.
+    movs r0, #0
+    movs r1, #1
+    b embrs_main
+    "#)
 }
 
-#[inline]
-unsafe fn initialize_data() {
-    let mut src: *const u32 = &_data_load;
-    let mut dst: *mut u32 = &mut _data;
+pub type InitHook = extern fn() -> ();
 
-    while dst != &mut _edata {
-        *dst = *src;
-        dst = dst.offset(1);
-        src = src.offset(1);
-    }
-}
-
-#[inline]
-unsafe fn zero_bss() {
-    let mut dst: *mut u32 = &mut _bss;
-    while dst != &mut _ebss {
-        *dst = 0u32;
-        dst = dst.offset(1);
-    }
+macro_rules! embrs_init_hooks {
+    (
+        $(
+            $(#[$m:meta])*
+            init_hook $name:ident = $f:ident;
+        )*
+    ) => {
+        $(
+            $(#[$m])*
+            #[link_section = ".embrs_init_array"]
+            #[no_mangle]
+            #[allow(dead_code, private_no_mangle_statics)]
+            pub static $name : $crate::arm_m::startup::InitHook = $f;
+        )*
+    };
 }
 
 #[cfg(feature = "cpu:cortex-m4f")]
-fn enable_cortex_m4_fpu() {
+extern fn enable_cortex_m4_fpu() {
     SCB.update_cpacr(|v| v.with_cp11(scb::CpAccess::Full)
                      .with_cp10(scb::CpAccess::Full));
     arm_m::instruction_synchronization_barrier()
+}
+
+embrs_init_hooks! {
+    #[cfg(feature = "cpu:cortex-m4f")]
+    init_hook EMBRS_FPU_ON = enable_cortex_m4_fpu;
 }
