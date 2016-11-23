@@ -210,109 +210,227 @@ macro_rules! bit_wrappers {
 ///     pub fn get_mode(self) -> BitsResult<Mode> { ... }
 ///     pub fn with_value(self, v: Mode) -> Self { ... }
 macro_rules! bitfield_accessors {
-    () => {};
-
+    // Terminal.
     (
-        $(#[$m:meta])*
-        pub [$bit:tt] $get:ident / $with:ident : $ty:ty,
-        $($rest:tt)*
+        @BEGIN
+        input [ ]
+        att [ ]
+        viz [ ]
+        cov [ ]
     ) => {
-        bitfield_accessors! {
-            @_impl
-            $(#[$m])*
-            [pub] partial [$bit : $bit] $get / $with : $ty
-        }
-
-        bitfield_accessors!{ $($rest)* }
     };
 
+    // Munch attributes.
     (
-        $(#[$m:meta])*
-        pub total [$bit:tt] $get:ident / $with:ident : $ty:ty,
-        $($rest:tt)*
+        @BEGIN
+        input [ #[$m:meta] $($rest:tt)* ]
+        att [ $($atts:tt)* ]
+        viz [ ]
+        cov [ ]
     ) => {
         bitfield_accessors! {
-            @_impl
-            $(#[$m])*
-            [pub] total [$bit : $bit] $get / $with : $ty
+            @BEGIN
+            input [ $($rest)* ]
+            att [ #[$m] $($atts)* ]
+            viz [ ]
+            cov [ ]
         }
-
-        bitfield_accessors!{ $($rest)* }
     };
 
+    // Munch visibility modifier.
     (
-        $(#[$m:meta])*
-        pub [$hi:tt : $lo:tt] $get:ident / $with:ident : $ty:ty,
-        $($rest:tt)*
+        @BEGIN
+        input [ pub $($rest:tt)* ]
+        att [ $($atts:tt)* ]
+        viz [ ]
+        cov [ ]
     ) => {
         bitfield_accessors! {
-            @_impl
-            $(#[$m])*
-            [pub] partial [$hi : $lo] $get / $with : $ty
+            @BEGIN
+            input [ $($rest)* ]
+            att [ $($atts)* ]
+            viz [ pub ]
+            cov [ ]
         }
-
-        bitfield_accessors!{ $($rest)* }
     };
 
+    // Munch `total`
     (
-        $(#[$m:meta])*
-        pub total [$hi:tt : $lo:tt] $get:ident / $with:ident : $ty:ty,
-        $($rest:tt)*
+        @BEGIN
+        input [ total $($rest:tt)* ]
+        att [ $($atts:tt)* ]
+        viz [ $($viz:tt)* ]
+        cov [ ]
     ) => {
         bitfield_accessors! {
-            @_impl
-            $(#[$m])*
-            [pub] total [$hi : $lo] $get / $with : $ty
+            @BEGIN
+            input [ $($rest)* ]
+            att [ $($atts)* ]
+            viz [ $($viz)* ]
+            cov [ total ]
         }
-
-        bitfield_accessors!{ $($rest)* }
     };
 
+    // Munch bit range (single bit edition)
     (
-        @_impl
-        $(#[$m:meta])*
-        [$($access:ident)*] partial [$hi:tt : $lo:tt]
-        $get:ident / $with:ident : $ty:ty
+        @BEGIN
+        input [ [ $bit:tt ] $($rest:tt)* ]
+        att [ $($atts:tt)* ]
+        viz [ $($viz:tt)* ]
+        cov [ $($cov:tt)* ]
     ) => {
-        $(#[$m])*
+        bitfield_accessors! {
+            @COMMIT
+            input [ $($rest)* ]
+            att [ $($atts)* ]
+            viz [ $($viz)* ]
+            cov [ $($cov)* ]
+            bits [ $bit , $bit ]
+        }
+    };
+
+    // Munch bit range (bit range edition)
+    (
+        @BEGIN
+        input [ [ $hi:tt : $lo:tt ] $($rest:tt)* ]
+        att [ $($atts:tt)* ]
+        viz [ $($viz:tt)* ]
+        cov [ $($cov:tt)* ]
+    ) => {
+        bitfield_accessors! {
+            @COMMIT
+            input [ $($rest)* ]
+            att [ $($atts)* ]
+            viz [ $($viz)* ]
+            cov [ $($cov)* ]
+            bits [ $hi , $lo ]
+        }
+    };
+
+    // Munch names and type (non-terminal edition).
+    (
+        @COMMIT
+        input [ $get:ident / $with:ident: $ty:ty , $($rest:tt)* ]
+        att [ $($atts:tt)* ]
+        viz [ $($viz:tt)* ]
+        cov [ $($cov:tt)* ]
+        bits [ $($bits:tt)* ]
+    ) => {
+        bitfield_accessors! {
+            @FINISH
+            input [ $($rest)* ]
+            att [ $($atts)* ]
+            viz [ $($viz)* ]
+            cov [ $($cov)* ]
+            bits [ $($bits)* ]
+            acc [ $get $with $ty ]
+        }
+    };
+
+    // Munch names and type (terminal edition).
+    (
+        @COMMIT
+        input [ $get:ident / $with:ident: $ty:ty ]
+        att [ $($atts:tt)* ]
+        viz [ $($viz:tt)* ]
+        cov [ $($cov:tt)* ]
+        bits [ $($bits:tt)* ]
+    ) => {
+        bitfield_accessors! {
+            @FINISH
+            input [ ]
+            att [ $($atts)* ]
+            viz [ $($viz)* ]
+            cov [ $($cov)* ]
+            bits [ $($bits:tt)* ]
+            acc [ $get $with $ty ]
+        }
+    };
+
+
+    // Accessor generation: total.
+    (
+        @FINISH
+        input [ $($rest:tt)* ]
+        att [ $(#[$meta:meta])* ]
+        viz [ $($viz:ident)* ]
+        cov [ total ]
+        bits [ $hi:expr , $lo:expr ]
+        acc [ $get:ident $with:ident $ty:ty ]
+    ) => {
+        $(#[$meta])*
         #[inline]
-        $($access)* fn $get(self) -> $crate::bits::BitsResult<$ty> {
-            <$ty as $crate::bits::FromBits>::from_bits(
-                $crate::bits::bitfield_extract(self.0, $hi, $lo))
-        }
-
-        $(#[$m])*
-        #[inline]
-        $($access)* fn $with(self, v: $ty) -> Self {
-            $crate::bits::BitsWrapper::from_raw(
-                $crate::bits::bitfield_replace(
-                    self.0, $hi, $lo,
-                    <$ty as $crate::bits::IntoBits>::into_bits(v)))
-        }
-    };
-
-    (
-        @_impl
-        $(#[$m:meta])*
-        [$($access:ident)*] total [$hi:tt : $lo:tt]
-        $get:ident / $with:ident : $ty:ty
-    ) => {
-        $(#[$m])*
-        #[inline]
-        $($access)* fn $get(self) -> $ty {
+        $($viz)* fn $get(self) -> $ty {
             <$ty as $crate::bits::FromBitsTotal>::from_bits_total(
                 $crate::bits::bitfield_extract(self.0, $hi, $lo))
         }
 
-        $(#[$m])*
+        $(#[$meta])*
         #[inline]
-        $($access)* fn $with(self, v: $ty) -> Self {
+        $($viz)* fn $with(self, v: $ty) -> Self {
             $crate::bits::BitsWrapper::from_raw(
                 $crate::bits::bitfield_replace(
                     self.0, $hi, $lo,
                     <$ty as $crate::bits::IntoBits>::into_bits(v)))
         }
+
+        bitfield_accessors! {
+            @BEGIN
+            input [ $($rest)* ]
+            att [ ]
+            viz [ ]
+            cov [ ]
+        }
     };
+
+    // Accessor generation: partial.
+    (
+        @FINISH
+        input [ $($rest:tt)* ]
+        att [ $(#[$meta:meta])* ]
+        viz [ $($viz:ident)* ]
+        cov [ ]
+        bits [ $hi:expr , $lo:expr ]
+        acc [ $get:ident $with:ident $ty:ty ]
+    ) => {
+        $(#[$meta])*
+        #[inline]
+        $($viz)* fn $get(self) -> $crate::bits::BitsResult<$ty> {
+            <$ty as $crate::bits::FromBits>::from_bits(
+                $crate::bits::bitfield_extract(self.0, $hi, $lo))
+        }
+
+        $(#[$meta])*
+        #[inline]
+        $($viz)* fn $with(self, v: $ty) -> Self {
+            $crate::bits::BitsWrapper::from_raw(
+                $crate::bits::bitfield_replace(
+                    self.0, $hi, $lo,
+                    <$ty as $crate::bits::IntoBits>::into_bits(v)))
+        }
+
+        bitfield_accessors! {
+            @BEGIN
+            input [ $($rest)* ]
+            att [ ]
+            viz [ ]
+            cov [ ]
+        }
+    };
+
+    // User syntax conversion.
+    (
+        $($any:tt)*
+    ) => {
+        bitfield_accessors! {
+            @BEGIN
+            input [ $($any)* ]
+            att [ ]
+            viz [ ]
+            cov [ ]
+        }
+    };
+
 }
 
 /// Declares `bit_enum` types.  These are Rust enums with bidirectional mapping
