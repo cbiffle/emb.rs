@@ -160,6 +160,7 @@ macro_rules! bit_wrappers {
     () => {};
     ($(#[$m:meta])* pub struct $name:ident(pub $ty:ty); $($rest:tt)*) => {
         #[derive(Copy, Clone)]
+        #[repr(C, packed)]
         $(#[$m])*
         pub struct $name(pub $ty);
 
