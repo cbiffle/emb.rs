@@ -29,6 +29,10 @@ impl<T> Reg<T> {
             volatile_store(self.value.get(), value)
         }
     }
+
+    pub fn update<F: FnOnce(T) -> T>(&self, f: F) {
+        self.set(f(self.get()))
+    }
 }
 
 /// Additional features that become available when a register contains a
