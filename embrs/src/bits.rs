@@ -172,6 +172,13 @@ macro_rules! bit_wrappers {
             }
         }
 
+        impl Default for $name {
+            fn default() -> Self {
+                <Self as $crate::bits::BitsWrapper>::from_raw(
+                    Default::default())
+            }
+        }
+
         bit_wrappers!{$($rest)*}
     };
 }
