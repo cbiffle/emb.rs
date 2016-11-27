@@ -77,6 +77,17 @@ impl FromBitsTotal for u8 {
     }
 }
 
+/// Maps 0..65535
+impl FromBitsTotal for u16 {
+    fn from_bits_total(bits: u32) -> Self {
+        if bits > core::u16::MAX as u32 {
+            unreachable!()
+        } else {
+            bits as u16
+        }
+    }
+}
+
 /// Identity map.
 impl FromBitsTotal for u32 {
     fn from_bits_total(bits: u32) -> Self {
@@ -101,6 +112,12 @@ impl IntoBits for bool {
 }
 
 impl IntoBits for u8 {
+    fn into_bits(self) -> u32 {
+        self as u32
+    }
+}
+
+impl IntoBits for u16 {
     fn into_bits(self) -> u32 {
         self as u32
     }
