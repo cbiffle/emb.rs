@@ -1,6 +1,5 @@
 #![feature(asm)]
 #![feature(const_fn)]
-#![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![feature(naked_functions)]
 

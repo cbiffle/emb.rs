@@ -1,7 +1,7 @@
 //! Support for memory-mapped registers of various sizes.
 
 use core::cell::UnsafeCell;
-use core::intrinsics::{volatile_load, volatile_store};
+use core::ptr;
 
 /// A register whose contents can be represented as `T`.  The contents are
 /// accessed using `volatile` operations only, ensuring that apparently dead
@@ -20,13 +20,13 @@ pub struct Reg<T> {
 impl<T> Reg<T> {
     /// Reads the contents of the register using a volatile load.
     pub fn get(&self) -> T {
-        unsafe { volatile_load(self.value.get()) }
+        unsafe { ptr::read_volatile(self.value.get()) }
     }
 
     /// Replaces the contents of the register using a volatile store.
     pub fn set(&self, value: T) {
         unsafe {
-            volatile_store(self.value.get(), value)
+            ptr::write_volatile(self.value.get(), value)
         }
     }
 
