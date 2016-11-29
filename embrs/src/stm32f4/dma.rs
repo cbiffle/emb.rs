@@ -6,6 +6,11 @@ use core::mem;
 use arm_m::reg::Reg;
 use bits;
 
+
+/*******************************************************************************
+ * Peripheral register layouts.
+ */
+
 /// Register layout of a DMA controller.
 #[repr(C, packed)]
 pub struct Dma {
@@ -24,7 +29,7 @@ pub struct Dma {
 /// Register layout of a single DMA stream.
 #[repr(C, packed)]
 pub struct Stream {
-    /// Control register.
+    /// Configuration register.
     pub cr:   Reg<Cr>,
     /// Number of data to transfer register.
     pub ndtr: Reg<Ndtr>,
@@ -47,27 +52,26 @@ pub struct Stream {
     pub fcr:  Reg<Fcr>,
 }
 
-/// Names of DMA streams.
-#[derive(Eq, PartialEq, Copy, Clone)]
-pub enum StreamIndex {
-    S0, S1, S2, S3, S4, S5, S6, S7
-}
-
-impl StreamIndex {
-    /// Converts a stream index into the corresponding index into the interrupt
-    /// register arrays `isr` and `ifcr`.
-    pub fn get_ir_index(self) -> usize {
-        (self as usize) / 4
-    }
-
-    /// Converts a stream index into the corresponding relative stream index
-    /// within an interrupt register (`isr[x]` or `ifcr[x]`).
-    pub fn get_rs_index(self) -> RelativeStreamIndex {
-        unsafe {
-            mem::transmute((self as u8) % 4)
-        }
+/// Produces a shared reference to DMA1.
+#[inline]
+pub fn dma1() -> &'static Dma {
+    unsafe {
+        &*(0x40026000 as *const Dma)
     }
 }
+
+/// Produces a shared reference to DMA2.
+#[inline]
+pub fn dma2() -> &'static Dma {
+    unsafe {
+        &*(0x40026400 as *const Dma)
+    }
+}
+
+
+/*******************************************************************************
+ * Interrupt Register(s)
+ */
 
 bit_wrappers! {
     /// Interrupt Register type, used by both the Interrupt Status Registers and
@@ -82,11 +86,6 @@ bit_wrappers! {
     /// Accessing streams this way is a bit fiddly, so we provide higher-level
     /// accessors on `Dma`: `get_interrupt_flags` and `clear_interrupt_flags`.
     pub struct Ir(pub u32);
-    pub struct Cr(pub u32);
-    pub struct Ndtr(pub u32);
-    pub struct Par(pub u32);
-    pub struct Mar(pub u32);
-    pub struct Fcr(pub u32);
 }
 
 bitflags! {
@@ -156,26 +155,62 @@ impl Ir {
     }
 }
 
+
+/*******************************************************************************
+ * Stream Configuration Register
+ */
+
+bit_wrappers! {
+    /// Configuration register type for a DMA stream.
+    pub struct Cr(pub u32);
+}
+
 impl Cr {
     bitfield_accessors! {
+        /// Selects the DRQ channel used for the "peripheral" side of the
+        /// stream.
         pub total [27:25] get_chsel / with_chsel: Channel,
+        /// Burst transfer configuration, memory side.
         pub total [24:23] get_mburst / with_mburst: Burst,
+        /// Burst transfer configuration, peripheral side.
         pub total [22:21] get_pburst / with_pburst: Burst,
+        /// In double-buffer mode, selects the current memory target.
         pub total [ 19  ] get_ct / with_ct: Target,
+        /// Enables double-buffer mode.
         pub total [ 18  ] get_dbm / with_dbm: bool,
+        /// The stream's priority level, relative to the other streams on the
+        /// same controller.  Has no effect on the priority of the accesses in
+        /// the bus matrix.
         pub total [17:16] get_pl / with_pl: Priority,
-        pub total [ 15  ] get_pincos / with_pincos: bool,
+        /// Increment size for the peripheral side.  This allows for accesses to
+        /// word-aligned byte- or halfword-sized registers.
+        pub total [ 15  ] get_pincos / with_pincos: Increment,
+        /// Size of accesses to use on the memory side.
         pub       [14:13] get_msize / with_msize: TransferSize,
+        /// Size of accesses to use on the peripheral side.
         pub       [12:11] get_psize / with_psize: TransferSize,
+        /// Selects whether the memory address is incremented after each
+        /// transfer.
         pub total [ 10  ] get_minc / with_minc: bool,
+        /// Selects whether the peripheral address is incremented after each
+        /// transfer.
         pub total [  9  ] get_pinc / with_pinc: bool,
+        /// Selects circular mode.
         pub total [  8  ] get_circ / with_circ: bool,
+        /// Selects transfer direction.
         pub       [ 7: 6] get_dir / with_dir: Direction,
+        /// Enables peripheral flow control, which is only useful in association
+        /// with the SDIO DRQ.
         pub total [  5  ] get_pfctrl / with_pfctrl: bool,
+        /// Enables the Transfer Complete interrupt.
         pub total [  4  ] get_tcie / with_tcie: bool,
+        /// Enables the Half Transfer Complete interrupt.
         pub total [  3  ] get_htie / with_htie: bool,
+        /// Enables the Transfer Error interrupt.
         pub total [  2  ] get_teie / with_teie: bool,
+        /// Enables the Direct Mode Error interrupt.
         pub total [  1  ] get_dmeie / with_dmeie: bool,
+        /// Enables the DMA stream.
         pub total [  0  ] get_en / with_en: bool,
     }
 }
@@ -216,6 +251,12 @@ bit_enums! {
         VeryHigh = 0b11,
     }
 
+    /// Increment size.
+    pub bit_enum Increment {
+        TransferSize = 0,
+        Word = 1,
+    }
+
     /// Size of each DMA transfer.
     pub bit_enum TransferSize {
         Byte = 0b00,
@@ -233,22 +274,51 @@ bit_enums! {
     }
 }
 
+
+/*******************************************************************************
+ * Stream Number of Data to Transfer Register
+ */
+
+bit_wrappers! {
+    /// Stream Number of Data to Transfer Register type.
+    /// 
+    /// This is a complicated way of defining a 16-bit register that is 32-bit
+    /// aligned and must be accessed using word-size bus transactions.
+    pub struct Ndtr(pub u32);
+}
+
 impl Ndtr {
     bitfield_accessors! {
+        /// Register contents.
         pub total [15: 0] get_ndt / with_ndt: u16,
     }
 }
 
+
+/*******************************************************************************
+ * FIFO Control Register
+ */
+
+bit_wrappers! {
+    /// Stream FIFO Control Register type.
+    pub struct Fcr(pub u32);
+}
+
 impl Fcr {
     bitfield_accessors! {
+        /// Enables the FIFO Error interrupt.
         pub total [7] get_feie / with_feie: bool,
+        /// Indicates the current FIFO status (read-only).
         pub       [5:3] get_fs / with_fs: FifoLevel,
+        /// Disables direct mode (i.e. enables the FIFO).
         pub total [2] get_dmdis / with_dmdis: bool,
+        /// Selects the FIFO fill threshold that triggers evacuation.
         pub total [1:0] get_fth / with_fth: FifoThreshold,
     }
 }
 
 bit_enums! {
+    /// FIFO status values.  The numbers indicate percentages.
     pub bit_enum FifoLevel {
         Under25  = 0b000,
         Under50  = 0b001,
@@ -258,6 +328,7 @@ bit_enums! {
         Full     = 0b101,
     }
 
+    /// FIFO threshold values.  The numbers indicate percentages.
     pub bit_enum FifoThreshold {
         At25 = 0b00,
         At50 = 0b01,
@@ -265,6 +336,11 @@ bit_enums! {
         At100 = 0b11,
     }
 }
+
+
+/*******************************************************************************
+ * DMA controller supplementary operations.
+ */
 
 impl Dma {
     /// Clears a set of interrupt flags for a particular stream.
@@ -288,18 +364,24 @@ impl Dma {
     }
 }
 
-/// Produces a shared reference to DMA1.
-#[inline]
-pub fn dma1() -> &'static Dma {
-    unsafe {
-        &*(0x40026000 as *const Dma)
-    }
+/// Names of DMA streams.
+#[derive(Eq, PartialEq, Copy, Clone)]
+pub enum StreamIndex {
+    S0, S1, S2, S3, S4, S5, S6, S7
 }
 
-/// Produces a shared reference to DMA2.
-#[inline]
-pub fn dma2() -> &'static Dma {
-    unsafe {
-        &*(0x40026400 as *const Dma)
+impl StreamIndex {
+    /// Converts a stream index into the corresponding index into the interrupt
+    /// register arrays `isr` and `ifcr`.
+    pub fn get_ir_index(self) -> usize {
+        (self as usize) / 4
+    }
+
+    /// Converts a stream index into the corresponding relative stream index
+    /// within an interrupt register (`isr[x]` or `ifcr[x]`).
+    pub fn get_rs_index(self) -> RelativeStreamIndex {
+        unsafe {
+            mem::transmute((self as u8) % 4)
+        }
     }
 }
