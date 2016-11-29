@@ -16,7 +16,7 @@
     unused_results,
     )]
 
-#![recursion_limit = "100"]
+#![recursion_limit = "300"]
 
 #[macro_use]
 extern crate bitflags;
