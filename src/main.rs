@@ -9,7 +9,7 @@ extern crate embrs;
 
 use embrs::arm_m::{self, exc, sys_tick};
 use embrs::stm32f4::rcc::{self, RCC, AhbPeripheral, ApbPeripheral};
-use embrs::stm32f4::gpio::{self, GPIOA, GPIOD};
+use embrs::stm32f4::gpio::{self, gpioa, gpiod};
 
 /******************************************************************************/
 
@@ -68,8 +68,8 @@ fn init_leds() {
     RCC.enable_clock(AhbPeripheral::GpioD);
 
     // Configure our pins for push-pull digital output.
-    GPIOD.set_mode(led_pins(), gpio::Mode::Gpio);
-    GPIOD.set_output_type(led_pins(), gpio::OutputType::PushPull);
+    gpiod().set_mode(led_pins(), gpio::Mode::Gpio);
+    gpiod().set_output_type(led_pins(), gpio::OutputType::PushPull);
 }
 
 fn init_uart() {
@@ -92,20 +92,20 @@ fn init_uart() {
 
     RCC.enable_clock(AhbPeripheral::GpioA);
     // Configure its TX pin (PA2) as AF7
-    GPIOA.set_alternate_function(gpio::P2, gpio::Function::AF7);
-    GPIOA.set_mode(gpio::P2, gpio::Mode::Alternate);
+    gpioa().set_alternate_function(gpio::P2, gpio::Function::AF7);
+    gpioa().set_mode(gpio::P2, gpio::Mode::Alternate);
 }
 
 /// Interrupt handler that toggles our LEDs.
 extern "C" fn toggle_isr() {
     use embrs::stm32f4::usart::*;
 
-    if GPIOD.get(led_pins()).is_empty() {
+    if gpiod().get(led_pins()).is_empty() {
         USART2.send8(b'1');
-        GPIOD.set(led_pins())
+        gpiod().set(led_pins())
     } else {
         USART2.send8(b'0');
-        GPIOD.clear(led_pins())
+        gpiod().clear(led_pins())
     }
 }
 

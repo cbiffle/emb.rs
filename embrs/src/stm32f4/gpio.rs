@@ -8,20 +8,19 @@
 
 use arm_m::reg::{AtomicReg,Reg};
 
-/// A GPIO port's memory mapped registers.  Instances of this type are placed by
-/// the linker script to alias the actual registers.
+/// A GPIO port's memory mapped registers.
 #[repr(C, packed)]
-struct Registers {
-    moder:   Reg<u32>,
-    otyper:  Reg<u32>,
-    ospeedr: Reg<u32>,
-    pupdr:   Reg<u32>,
-    idr:     Reg<u32>,
-    odr:     Reg<u32>,
-    bsrr:    Reg<u32>,
-    lckr:    Reg<u32>,
-    afrl:    Reg<u32>,
-    afrh:    Reg<u32>,
+pub struct GpioPort {
+    pub moder:   Reg<u32>,
+    pub otyper:  Reg<u32>,
+    pub ospeedr: Reg<u32>,
+    pub pupdr:   Reg<u32>,
+    pub idr:     Reg<u32>,
+    pub odr:     Reg<u32>,
+    pub bsrr:    Reg<u32>,
+    pub lckr:    Reg<u32>,
+    pub afrl:    Reg<u32>,
+    pub afrh:    Reg<u32>,
 }
 
 /// Possible modes of a GPIO pin.
@@ -105,33 +104,26 @@ bitflags! {
     }
 }
 
-/// GPIO port driver.
-pub struct GpioPort {
-    reg: *const Registers,
-}
-
-unsafe impl Sync for GpioPort {}
-
 impl GpioPort {
     /// Changes the mode of the pins selected by `pins` to `mode`.
     pub fn set_mode(&self, pins: PinMask, mode: Mode) {
-        Self::update_2(pins, mode as u32, unsafe { &self.reg().moder })
+        Self::update_2(pins, mode as u32, &self.moder)
     }
 
     /// Changes the output type of the pins selected by `pins` to `ot`.
     pub fn set_output_type(&self, pins: PinMask, ot: OutputType) {
-        Self::update_1(pins, ot as u32, unsafe { &self.reg().otyper })
+        Self::update_1(pins, ot as u32, &self.otyper)
     }
 
     /// Changes the output speed of the pins selected by `pins` to `speed`.
     pub fn set_speed(&self, pins: PinMask, speed: Speed) {
-        Self::update_2(pins, speed as u32, unsafe { &self.reg().ospeedr })
+        Self::update_2(pins, speed as u32, &self.ospeedr)
     }
 
     /// Changes the pull up/down configuration of the pins selected by `pins` to
     /// `pull`.
     pub fn set_pull(&self, pins: PinMask, pull: Pull) {
-        Self::update_2(pins, pull as u32, unsafe { &self.reg().pupdr })
+        Self::update_2(pins, pull as u32, &self.pupdr)
     }
 
     /// Selects an alternate function for the pins selected by `pins`.  For this
@@ -159,9 +151,9 @@ impl GpioPort {
         let pins = pins.bits() as u32;
 
         do_update(pins & 0xFF, af,
-                  unsafe { &self.reg().afrl });
+                  &self.afrl);
         do_update((pins >> 8) & 0xFF, af,
-                  unsafe { &self.reg().afrh })
+                  &self.afrh)
     }
 
 
@@ -170,28 +162,19 @@ impl GpioPort {
     #[inline]
     pub fn get(&self, pins: PinMask) -> PinMask {
         PinMask::from_bits_truncate(
-            unsafe { self.reg().idr.get() as u16 } & pins.bits())
+            (self.idr.get() as u16) & pins.bits())
     }
 
     /// Sets pins selected by `pins` to logic high.
     #[inline]
     pub fn set(&self, pins: PinMask) {
-        unsafe { self.reg() }.bsrr.set(pins.bits() as u32)
+        self.bsrr.set(pins.bits() as u32)
     }
 
     /// Clears pins selected by `pins` to logic low.
     #[inline]
     pub fn clear(&self, pins: PinMask) {
-        unsafe { self.reg() }.bsrr.set((pins.bits() as u32) << 16)
-    }
-
-    /// Internal shorthand for dereferencing our raw pointer.  This can vend
-    /// an arbitrary number of apparently unique references to a single object,
-    /// so it's marked `unsafe` here.  So long as we're careful about how we
-    /// access the `Registers` it can be used correctly.
-    #[inline]
-    unsafe fn reg(&self) -> &'static Registers {
-        &*self.reg
+        self.bsrr.set((pins.bits() as u32) << 16)
     }
 
     /// Updates a word-packed array of 1-bit fields with `val`.  The elements
@@ -228,11 +211,14 @@ impl GpioPort {
 
 macro_rules! static_gpio {
     ($name:ident, $addr:expr) => {
-        pub static $name: GpioPort = GpioPort {
-            reg: $addr as *const Registers,
-        };
+        #[inline]
+        pub fn $name() -> &'static GpioPort {
+            unsafe {
+                &*($addr as *const GpioPort)
+            }
+        }
     };
 }
 
-static_gpio!(GPIOA, 0x40020000);
-static_gpio!(GPIOD, 0x40020c00);
+static_gpio!(gpioa, 0x40020000);
+static_gpio!(gpiod, 0x40020c00);
